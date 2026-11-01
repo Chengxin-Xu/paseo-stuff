@@ -1,0 +1,8 @@
+{
+  "name": "paseo-ci-daemon",
+  "private": true,
+  "description": "Pinned, prebuilt npm CLI for package and Windows daemon smoke checks.",
+  "dependencies": {
+    "@getpaseo/cli": "0.14.0"
+  }
+}

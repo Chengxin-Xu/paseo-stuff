@@ -2,21 +2,45 @@ name: Plugin checks
 on:
   push:
     branches: [main]
+    paths-ignore: &docs-only
+      - '*.md'
+      - 'docs/**'
+      - '.github/ci/*.md'
+      - 'plugins/*/*.md'
   pull_request:
+    paths-ignore: *docs-only
+  workflow_dispatch:
+# Do not use github.ref for main: even cancel-in-progress: false can evict a
+# pending run in the same group. Every non-PR run gets its own group.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 permissions:
   contents: read
 jobs:
   check:
-    name: ${{ matrix.plugin }} / Node ${{ matrix.node }}
-    runs-on: ubuntu-latest
+    name: ${{ matrix.plugin }} / ${{ matrix.label || format('Node {0}', matrix.node) }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
         plugin: [agent-activity, deepseek-harness, maka, math-renderer, paseo-pet]
         node: [22, 24]
+        os: [ubuntu-latest]
+        include:
+          - plugin: deepseek-harness
+            node: 24
+            os: windows-latest
+            label: Windows tests
+            # Separate the small test-only cache from historical Windows
+            # caches that also contained hundreds of global tool packages.
+            cache_lockfiles: |
+              plugins/deepseek-harness/package-lock.json
+              plugins/deepseek-harness/package.json
     defaults:
       run:
+        shell: bash
         working-directory: plugins/${{ matrix.plugin }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -26,11 +50,16 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-          cache-dependency-path: plugins/${{ matrix.plugin }}/package-lock.json
+          cache-dependency-path: ${{ matrix.cache_lockfiles || format('plugins/{0}/package-lock.json', matrix.plugin) }}
       - run: npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
-      - run: npm run prepare:markdown --if-present
-      - run: npm run prepare:wasm --if-present
-      - run: npm run check
+      - if: matrix.plugin == 'math-renderer'
+        run: npm run prepare:markdown && npm run prepare:wasm
+      - if: runner.os != 'Windows'
+        run: npm run check
+      # Keep the full platform-specific suite, but do not serialize it behind
+      # the unrelated tool installs / daemon smoke check.
+      - if: runner.os == 'Windows'
+        run: npm test
   npm-package:
     # Loads the packed npm package with only its shrinkwrapped production
     # dependencies, as an npm installation does. Development dependencies are
@@ -59,8 +88,15 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: plugins/${{ matrix.plugin }}/package-lock.json
+          cache-dependency-path: |
+            plugins/${{ matrix.plugin }}/package-lock.json
+            .github/ci/paseo/package-lock.json
       - run: npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Install Paseo CLI
+        working-directory: .github/ci/paseo
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund --prefer-offline
+          echo "$PWD/node_modules/.bin" >> "$GITHUB_PATH"
       - name: Pack and install production dependencies
         run: |
           pack="$RUNNER_TEMP/pack"
@@ -75,7 +111,6 @@ jobs:
         env:
           PLUGIN_ID: ${{ matrix.id }}
         run: |
-          npm install -g --no-audit --no-fund @getpaseo/cli@0.14.0
           home="$RUNNER_TEMP/paseo-home"
           mkdir -p "$home"
           echo '{"version":1,"daemon":{"listen":"127.0.0.1:6798","relay":{"enabled":false}},"pluginsEnabled":true}' > "$home/config.json"
@@ -95,7 +130,7 @@ jobs:
     # needed: the provider status and model catalog work without one.
     name: deepseek-harness / Windows daemon
     runs-on: windows-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     defaults:
       run:
         shell: bash
@@ -104,17 +139,41 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Set a shared npm download cache
+        # --prefix can change npm's globalconfig (and its cache on Windows).
+        # setup-node and every install must use the same explicit path.
+        run: echo "npm_config_cache=$(cygpath -w "$RUNNER_TEMP/npm-cache")" >> "$GITHUB_ENV"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: plugins/deepseek-harness/package-lock.json
-      - run: npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
-      - run: npm run check
-      - name: Install Paseo and DSH
+          cache-dependency-path: |
+            plugins/deepseek-harness/package-lock.json
+            .github/ci/paseo/package-lock.json
+            .github/ci/dsh/package-lock.json
+      # The daemon compiles the plugin against its SDK. Tests and development
+      # dependencies live in the separate Windows tests job.
+      - run: npm ci --omit=dev --ignore-scripts --legacy-peer-deps --no-audit --no-fund
+      - name: Install Paseo and official DSH in parallel
         run: |
-          npm install -g --no-audit --no-fund @getpaseo/cli@0.14.0
-          npm install -g --ignore-scripts --no-audit --no-fund @deepseek-ai/dsh@latest
+          install_tool() (
+            cd "$GITHUB_WORKSPACE/.github/ci/$1"
+            echo "$1 npm cache: $(npm config get cache)"
+            npm ci --ignore-scripts --no-audit --no-fund --prefer-offline
+          )
+          install_tool paseo > "$RUNNER_TEMP/paseo-install.log" 2>&1 &
+          paseo_pid=$!
+          install_tool dsh > "$RUNNER_TEMP/dsh-install.log" 2>&1 &
+          dsh_pid=$!
+          status=0
+          wait "$paseo_pid" || status=1
+          wait "$dsh_pid" || status=1
+          cat "$RUNNER_TEMP/paseo-install.log" "$RUNNER_TEMP/dsh-install.log"
+          if [ "$status" -ne 0 ]; then exit "$status"; fi
+          echo "$GITHUB_WORKSPACE/.github/ci/paseo/node_modules/.bin" >> "$GITHUB_PATH"
+          echo "$GITHUB_WORKSPACE/.github/ci/dsh/node_modules/.bin" >> "$GITHUB_PATH"
+      - name: Check official DSH launcher
+        run: |
           where dsh
           dsh --profile acp --version
       - name: Load the plugin in a daemon

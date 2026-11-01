@@ -49,6 +49,8 @@ jobs:
         with:
           node-version: 24
           registry-url: https://registry.npmjs.org
+          cache: npm
+          cache-dependency-path: ${{ steps.plugin.outputs.dir }}/package-lock.json
       - if: steps.plugin.outputs.dir
         name: Check package version
         id: check
@@ -57,7 +59,10 @@ jobs:
           VERSION: ${{ steps.plugin.outputs.version }}
         run: |
           # Trusted publishing needs npm 11.5.1 or later.
-          npm install -g npm@11
+          node -e '
+            const [major, minor, patch] = require("node:child_process").execSync("npm --version", {encoding: "utf8"}).trim().split(".").map(Number);
+            if (major < 11 || (major === 11 && (minor < 5 || (minor === 5 && patch < 1)))) process.exit(1);
+          ' || npm install -g npm@11
           name=$(node -p 'require("./package.json").name')
           actual=$(node -p 'require("./package.json").version')
           if [ "$actual" != "$VERSION" ]; then
@@ -72,8 +77,10 @@ jobs:
         working-directory: ${{ steps.plugin.outputs.dir }}
         run: |
           npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund
-          npm run prepare:markdown --if-present
-          npm run prepare:wasm --if-present
+          if [ "${{ steps.plugin.outputs.dir }}" = "plugins/math-renderer" ]; then
+            npm run prepare:markdown
+            npm run prepare:wasm
+          fi
       - if: steps.check.outputs.publish
         working-directory: ${{ steps.plugin.outputs.dir }}
         run: npm run check
