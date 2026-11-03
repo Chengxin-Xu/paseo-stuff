@@ -1,5 +1,31 @@
 # Verification and limits
 
+## Local compaction replay fix — 2026-11-03
+
+- Node **24.14.0**, macOS, Paseo Desktop/daemon **0.14.0**, installed plugin
+  **0.1.0-beta.18**, DSH **0.2.1-rc.5**. This is a local patch, not a published release.
+- `npm run check` passes with the pinned **0.11.4** SDKs and with **0.14.0**
+  client/plugin/protocol SDKs installed without saving: typecheck, zero lint
+  warnings/errors, and **167 tests in six files** on each SDK line.
+- Synthetic regressions cover correlated pruning/checkpoint replacements,
+  repeated compaction, incomplete compaction, original tool-output retention,
+  log immutability, post-compaction messages, internal search metadata, and
+  unrelated/mismatched/malformed replacement rejection. The production provider
+  test verifies timeline admission on 0.14.0, no recovery notice, no duplicate
+  checkpoint, and a successful subsequent turn with a synthetic ACP peer.
+- Read-only verification against an existing private compacted session reproduced
+  `unsupported` on the original reader and succeeded on the patched reader:
+  **1,049 records**, **455 ACP updates** (12 user, 118 thought, 11 answer,
+  157 tool-call and 157 tool-result updates). All displayed update contents and
+  ordering matched the append-only original conversation. The compressed source
+  was unchanged; the private transcript was not added as a repository fixture.
+- Applied the runtime patch to the existing local npm installation and reloaded
+  only the plugin and target agent, without restarting the daemon or sending a
+  model prompt. The plugin reports `running`; the restored timeline has **298**
+  items. In the native macOS app, both the first pre-compaction turn and latest
+  turn opened, all **12** navigation entries remained, and the history warning
+  disappeared. Native mobile clients and attachment replay were not tested.
+
 ## Beta.18 — default ACP image startup (2026-10-31)
 
 - Root cause confirmed in published **DSH 0.2.1-rc.5**: the base

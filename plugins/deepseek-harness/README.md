@@ -155,9 +155,14 @@ from the launched session's `DSH_HOME` (session environment overrides launch
 environment), with the same path expansion as the Usage source. It does not
 modify the log or create a second copy of it.
 
-Replay recognises version 4 and the mapped event/content shapes only. Missing,
+Replay recognises version 4 and the mapped event/content shapes only. It restores
+the original append-only conversation across context compaction: original messages
+and full tool results stay visible, while compaction summaries, correlated checkpoint
+and pruned-result replacements, and internal DeepSeek search requests are omitted.
+Only replacements matching the immediately preceding compaction marker are recognised;
+unrelated or malformed replacements still leave history unavailable. Missing,
 corrupt or changed files, newer generations, unknown events, unsupported content
-(such as attachments) or surface replacements leave the timeline empty while
+(such as attachments) or unrecognised surface replacements leave the timeline empty while
 DSH still restores context. Reads are capped at 16 MiB compressed, 64 MiB decoded,
 50,000 records/updates and one second; exceeding a cap discards the entire replay.
 After a successful context resume with history recovery requested, a brief

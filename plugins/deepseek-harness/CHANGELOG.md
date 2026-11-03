@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- Restore original v4 chat history after context compaction and tool-result pruning.
+  Omit only rewrites correlated with the immediately preceding compaction marker,
+  keeping original messages and full tool output without duplicate checkpoints.
+- Recognise the internal DeepSeek search-request log event without displaying its
+  request body. Unknown events, unrelated replacements, attachments and existing
+  size/time limits retain the context-only fallback.
+
 ## 0.1.0-beta.18 — 2026-10-31
 
 - Repair DSH rc.5's stale official ACP startup default using a private process-only
