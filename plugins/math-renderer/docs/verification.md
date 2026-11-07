@@ -1,5 +1,42 @@
 # Verification scope
 
+## Paseo 0.15.3 compatibility check (2026-11-07)
+
+- No production code or version change: this is verification of beta.8 with updated
+  development fixtures and documentation, not a new published release.
+- After `npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund`,
+  `npm run prepare:markdown` and `npm run prepare:wasm`, `npm run check` passes
+  with the pinned **0.13.2** SDK: typecheck, lint with zero warnings/errors and
+  **5 files / 97 tests**. Installing client, plugin and protocol **0.15.3** with
+  `--no-save --package-lock=false` and repeating the check gives the same result.
+  The complete-client Hermes VM cases ran, with no skipped tests.
+- Nine unmodified **v0.15.3** source files and the reduced message-ID helper are
+  pinned at commit `d91ae138cb931447635e94296023414a58bedcc5`, with target protocol
+  0.15.3. Their runtime content is byte-identical to the old 0.14.0 fixtures. Tests
+  run the real host pipeline for Full, Collapse tool calls and Collapse turns:
+  whole completed formula replies, native streaming, unsupported/oversized fallback,
+  stable source identity, tool grouping, turn folding and the chat Find model.
+  These are offline host integration tests with synthetic input.
+- The formula-reply folding limitation persists in 0.15.3. Upstream
+  [#8811](https://github.com/getpaseo/paseo/pull/8811) merged on main at
+  `dc51a3b6a9e2bec35f5c250c76181e4446c02fc2`, but the 0.15.3 tag lacks its
+  `sourceKind` projection and plugin-reply recognition. It awaits a release.
+  Native-reply mode remains the workaround on 0.14 through 0.15.3. Activity's
+  separate transformed-work folding issue
+  [#8875](https://github.com/getpaseo/paseo/issues/8875) remains open.
+- On an isolated macOS **0.15.3** daemon (temporary home, `127.0.0.1:6863`,
+  relay off), `npm pack` generated the parser/WASM assets, and the unpacked tarball
+  passed `npm ci --omit=dev --ignore-scripts`. Installed as a directory beside
+  Readable Agent Activity beta.14, it reported `running`. This checks real daemon
+  compilation/loading, not live UI rendering or an RPC call from a client.
+- Logs and package artifacts: `/tmp/paseo-ui-0153-evidence/`, including
+  `math-renderer-sdk0132-check.log`, `math-renderer-sdk0153-check.log`,
+  `math-production-install.log`, `plugin-status.json` and `daemon-status.json`.
+  The isolated daemon was stopped and its final status was `stopped`.
+- **Not verified on 0.15.3:** live web UI, desktop app, native iOS/Android or Windows.
+  The last live web-client results are recorded below. The main daemon and existing
+  installations were not changed.
+
 ## Beta.8 — Paseo 0.14.0 (2026-10-30)
 
 - `npm run check` with the pinned **0.13.2** SDK and with the **0.14.0** client, plugin and

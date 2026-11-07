@@ -1,5 +1,47 @@
 # Verification and remaining gaps
 
+## Paseo 0.15.3 compatibility check (2026-11-07)
+
+- No production code or version change: this is verification of beta.14 with updated
+  development fixtures and documentation, not a new published release.
+- `npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund`, then
+  `npm run check` with the pinned **0.13.2** SDK: typecheck, lint with zero
+  warnings/errors and **7 files / 279 tests** pass. Installing client, plugin and
+  protocol **0.15.3** with `--no-save --package-lock=false` and running the same
+  check also passes. The complete-entry Hermes VM cases ran, with no skipped tests.
+- The actual **v0.15.3** presentation, projection, tool grouping, turn membership and
+  turn folding sources are pinned at commit
+  `d91ae138cb931447635e94296023414a58bedcc5`, with target protocol 0.15.3.
+  They are byte-identical to the previously pinned 0.14.0 files. The integration
+  suite exercises Full, Collapse tool calls and Collapse turns, live/history
+  identity, native plan/agent-message/heartbeat handling, and switching existing
+  history between cards and native groups. Synthetic inputs run through the real
+  host pipeline; these are offline host integration tests.
+- Upstream [#8875](https://github.com/getpaseo/paseo/issues/8875) remains open:
+  transformed tool/Thinking cards bypass grouping and are not counted as a turn's
+  work. [#8811](https://github.com/getpaseo/paseo/pull/8811), the separate plugin-reply
+  folding fix, merged on main at `dc51a3b6a9e2bec35f5c250c76181e4446c02fc2`.
+  That commit is absent from the 0.15.3 release ancestry; the tag still lacks
+  `sourceKind` preservation. Keep the Full/native-row guidance on supported older
+  versions and on 0.15.3.
+- On an isolated macOS **0.15.3** daemon (temporary home, `127.0.0.1:6863`,
+  relay off), `npm pack` output was unpacked, installed with
+  `npm ci --omit=dev --ignore-scripts --legacy-peer-deps`, and added as a directory
+  beside Math Renderer beta.8. Both reported `running`.
+- The same daemon also installed the released
+  `npm:paseo-readable-agent-activity@0.1.0-beta.14` under a temporary ID and reported
+  `running`. The official 0.15.3 npm acquisition path uses
+  `npm install --legacy-peer-deps --ignore-scripts --include=prod --omit=dev`.
+  Plain `npm ci --omit=dev` on an unpacked tarball without `--legacy-peer-deps`
+  fails on Prism's React peer; the documented/host installation path succeeds.
+- Logs and package artifacts: `/tmp/paseo-ui-0153-evidence/`, including
+  `agent-activity-sdk0132-check.log`, `agent-activity-sdk0153-check.log`,
+  `plugin-status.json`, `activity-npm-load.json` and `daemon-status.json`.
+  The isolated daemon was stopped and its final status was `stopped`.
+- **Not verified on 0.15.3:** live web UI, desktop app, native iOS/Android or Windows.
+  The last live web-client results are recorded below. The main daemon and existing
+  installations were not changed.
+
 ## Beta.14 — Paseo 0.14.0 (2026-10-30)
 
 - `npm run check` with the pinned **0.13.2** SDK and with the **0.14.0** client, plugin and
@@ -210,7 +252,7 @@
 - Summary remains unsupported: grouping code and the public transform input are unchanged.
 - **Live 0.10.0-beta.1 check:** beta.8 at PR head `1f44a52` was reloaded into the existing
   enabled directory installation `colorful-agent-activity` on the local macOS daemon,
-  which reports it running; Pet stayed disabled. The client was the hosted web app
+  which reports it running. The client was the hosted web app
   (app.paseo.sh) in desktop Chromium at 1280×720, paired through the relay, with Full
   detail. A real DeepSeek Harness turn's Bash call rendered as an Activity card.
   Expanding it showed syntax-highlighted JSON Input and the `paseo-plugin-check` Output;
@@ -235,7 +277,7 @@ The sections below record historical checks for earlier releases.
 - Desktop UI automation was unavailable in this session. The live turn does not
   establish visual acceptance of its cards. No native mobile UI check was performed.
 - Summary remains unsupported: 0.9 preserves all custom cards but bypasses native
-  grouping. No host preference was changed. DSH and Pet enable states were preserved.
+  grouping. No host preference was changed. Other plugin enable states were preserved.
 
 ## Beta.6 — unified formatter and local acceptance (2026-09-13)
 
@@ -362,7 +404,7 @@ reload. No new on-phone visual check is claimed.
 
 The existing enabled `colorful-agent-activity` installation on `127.0.0.1:6767` reloaded
 successfully and reported running, with only stopping/stopped/loading/ready log additions.
-The daemon was not restarted; `deepseek-harness` and `paseo-pet` remained disabled.
+The daemon was not restarted; `deepseek-harness` remained disabled.
 The temporary browser and preview process were closed. That verification pass did
 not publish a release; the fix is now included in the monorepo beta.5.
 The dependency audit still reports only the previously documented low-severity `diff` advisory.
@@ -431,7 +473,7 @@ The repeated output screenshot was byte-identical; no preview artwork was change
 These are synthetic production-component checks, not a new native-client matrix.
 After typecheck, beta.3 was reloaded into the same enabled macOS Paseo 0.8.0
 installation. Its new log entries were only stopping/stopped/loading/ready,
-with no new stderr. The DSH and pet installations retained enabled/running state;
+with no new stderr. The DSH installation retained enabled/running state;
 the daemon and display preferences were not changed.
 
 For beta.4, a focused `?icons` browser pass at **1500×1050 dark / 390×844 light**

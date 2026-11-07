@@ -28,7 +28,7 @@ const present = ({ head = [], tail = [], display = "full", transform = cards, is
   createStreamPresentation()({ head, tail, display, transform, isTurnActive, expandedTurnHostIds: new Set(expanded) });
 const kinds = rows => rows.map(row => row.kind === "plugin" ? row.itemKind : row.kind);
 
-describe("Paseo 0.14.0 actual presentation pipeline", () => {
+describe("Paseo 0.15.3 actual presentation pipeline", () => {
   describe("Full", () => {
     it.each(["running", "completed", "failed", "canceled"])("retains all %s tool data", status => {
       const original = [call("one"), call("two", status)];

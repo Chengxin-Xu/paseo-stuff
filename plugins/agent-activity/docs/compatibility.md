@@ -1,12 +1,12 @@
-# Paseo 0.13 and 0.14 compatibility
+# Paseo 0.13 through 0.15.3 compatibility
 
 ## Supported scope
 
-Beta.14 requires **Paseo 0.13.0** and is checked against **0.14.0**, using the **Full**
+Beta.14 requires **Paseo 0.13.0** and is checked against **0.15.3**, using the **Full**
 chat display (0.13: **Full detail**). It pins the 0.13.2 SDK and protocol packages, and
-its checks also pass with the 0.14.0 SDK installed without saving. Host-pipeline tests
-run unmodified 0.14.0 sources (see [fixture provenance](../tests/fixtures/paseo-0.14/README.md)),
-and the packed package ran on a live 0.14.0 daemon in the 0.14.0 web client (see
+its checks also pass with the 0.15.3 SDK installed without saving. Host-pipeline tests
+run unmodified 0.15.3 sources (see [fixture provenance](../tests/fixtures/paseo-0.15.3/README.md)).
+The last live web-client check used a 0.14.0 daemon and web client (see
 [verification](verification.md)). Paseo 0.8 to 0.12 are no longer supported; beta.11
 remains on npm for them.
 
@@ -42,7 +42,7 @@ package resolution and premature export snapshots from Paseo's CommonJS interop.
 No global polyfill, DOM access, host patch or native highlighter disable switch is used.
 Shell uses a small local grammar; this is not identical token classification to Shiki.
 
-`tests/client-bundle.compat.test.js` builds the complete entry with the 0.14.0
+`tests/client-bundle.compat.test.js` builds the complete entry with the 0.15.3
 compiler options (unchanged from 0.13.2), evaluates it from a string, registers/cleans
 up contributions and exercises all supported grammars in Hermes. React Native 0.86.3 ships only the
 `hermesc` compiler, not the Hermes VM, so the test runs the VM from React Native
@@ -52,7 +52,7 @@ it does not prove on-device rendering. The other Node tests exercise real Zod va
 
 ## Why collapsed displays cannot safely fall back
 
-In [0.14.0](https://github.com/getpaseo/paseo/tree/8c6de842a3157530c26a7a94c78a3d647fb96ce9),
+In [0.15.3](https://github.com/getpaseo/paseo/tree/d91ae138cb931447635e94296023414a58bedcc5),
 as in 0.13.2, `agent-stream/presentation.ts` applies plugin transformation before
 tool-call grouping and turn folding. 0.14 replaces Summary with **Collapse tool calls**
 and **Collapse turns** (the default for new installations):
@@ -67,7 +67,14 @@ and **Collapse turns** (the default for new installations):
   that reply fold with it.
 
 `tests/paseo-host.compat.test.js` runs the unmodified pipeline in every display mode.
-It proves that every call is retained and documents both limits. The public transform
+It verifies that every call is retained and documents both limits. The relevant
+presentation, projection, grouping and turn-folding source files are byte-identical
+to 0.14.0. Upstream [#8875](https://github.com/getpaseo/paseo/issues/8875) tracks
+transformed tool/Thinking work and remains open. The separate plugin-reply fix
+[#8811](https://github.com/getpaseo/paseo/pull/8811) merged on main at
+`dc51a3b6a9e2bec35f5c250c76181e4446c02fc2`, but the 0.15.3 release commit lacks
+its `sourceKind` projection and reply-folding changes. It awaits a release and does
+not address transformed-work grouping. The public transform
 input, unchanged since 0.9, still has only the item and phase, no display mode, and a
 transformer may return only plugin rows. This is not collapsed-display support.
 
