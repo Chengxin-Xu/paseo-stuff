@@ -57,7 +57,7 @@ SDK. See [verification.md](verification.md) for the executed checks and limits.
 ## Paseo 0.15.3 and DSH 0.2.2-rc.1
 
 The 0.15.3 public SDK retains the resolved launch and ACP load-replay interfaces.
-Typecheck, lint and 153 tests pass with both the pinned 0.11.4 SDK and no-save
+Typecheck, lint and 171 tests pass with both the pinned 0.11.4 SDK and no-save
 0.15.3 SDK. The production provider also passes official DSH 0.2.2-rc.1
 initialization, catalog/list, configured-session persistence reopen and cleanup
 on Node 24.18.0 without model calls. DSH now requires Node 24.9+ for its CLI;
@@ -68,7 +68,7 @@ Compared with 0.2.1-rc.5, the
 now delegates model changes to the Agent's durable model selection. A configured
 session records `model/selection` events even before a model prompt. Beta.19
 skips those bookkeeping events so they do not discard the transcript or produce
-an unsupported-history warning. Beta.19 is unpublished source. Its tarball also
+an unsupported-history warning. Its tarball also
 loads as running with runtime-only dependencies on an isolated 0.15.3 daemon;
 provider diagnostic and model/reasoning discovery pass without model calls.
 
@@ -82,8 +82,10 @@ The current
 [surface implementation](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-rc.1/packages/core/session/src/surface.ts)
 orders replacement ranges by surface position. Event sequence IDs can be
 non-monotonic after replacement, so numeric start/end ordering is not a valid
-compaction assumption. External PR #52 remains unincorporated and awaiting its
-contributor; compaction/replacement histories retain the existing safe fallback.
+compaction assumption. Beta.19 recognises replacements correlated with the preceding
+compaction marker without requiring numerically increasing endpoints. Original
+messages and full tool output remain visible after compaction/pruning, including
+repeated prefix compaction. Unknown replacements retain the safe fallback.
 See [verification.md](verification.md) for scope and evidence.
 
 ## Paseo 0.14.0

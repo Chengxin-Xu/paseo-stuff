@@ -20,6 +20,8 @@ const BOOKKEEPING = new Set([
   "permission/preset", "sandbox/mode", "approval/policy", "agent/inbox/spliced",
   "session-log-deepseek/delivery-accepted", "job/registered", "job/settled",
   "goal/change", "system/message", "developer/message", "model/selection",
+  "compaction/start", "compaction/summary", "compaction/end", "compaction/prune",
+  "web/deepseek-search-llm-request",
 ]);
 
 export interface ReplayTarget {
@@ -114,6 +116,7 @@ async function readReplay(
     if (header.version !== 4) throw new ReplayError("unsupported");
     if (header.id !== target.sessionId || header.cwd !== target.cwd) continue;
     const frames: AcpStreamMessage[] = [];
+    let previous: RecordValue | undefined;
     for (let index = 1; index < lines.length; index++) {
       if (index % 256 === 0) await yieldLoop();
       signal.throwIfAborted();
@@ -121,7 +124,7 @@ async function readReplay(
       if (event.seq !== index - 1 || typeof event.time !== "number") {
         throw new ReplayError("corrupt");
       }
-      for (const update of replayEvent(event)) {
+      for (const update of replayEvent(event, previous)) {
         frames.push({
           jsonrpc: "2.0",
           method: "session/update",
@@ -129,6 +132,7 @@ async function readReplay(
         });
         if (frames.length > MAX_RECORDS) throw new ReplayError("limit");
       }
+      previous = event;
     }
     return frames;
   }
@@ -214,13 +218,15 @@ function frameLength(input: Buffer): number {
   return end;
 }
 
-function replayEvent(event: RecordValue): RecordValue[] {
+function replayEvent(event: RecordValue, previous?: RecordValue): RecordValue[] {
   const data = record(event.data);
   if (typeof event.type !== "string") throw new ReplayError("corrupt");
   if (BOOKKEEPING.has(event.type)) return [];
-  // Replacements change the model's surface rather than append conversation.
-  // Until mapped explicitly, retain the empty-timeline fallback for these logs.
+  // Display the append-only conversation, not the model's compacted surface.
+  // DSH retains originals and appends a marker immediately before each prune
+  // or checkpoint replacement. Do not duplicate those as fresh chat messages.
   if (event.surfaceOp !== undefined && event.surfaceOp !== "append") {
+    if (isCompactionReplacement(event, previous)) return [];
     throw new ReplayError("unsupported");
   }
   switch (event.type) {
@@ -258,6 +264,32 @@ function replayEvent(event: RecordValue): RecordValue[] {
     default:
       throw new ReplayError("unsupported");
   }
+}
+
+/** Recognise only the correlated v4 rewrites emitted by DSH compaction. */
+function isCompactionReplacement(event: RecordValue, previous?: RecordValue): boolean {
+  if (!previous || typeof event.surfaceOp !== "object" || event.surfaceOp === null
+    || Array.isArray(event.surfaceOp)) return false;
+  const op = event.surfaceOp as RecordValue;
+  if (op.op !== "replace" || !Number.isSafeInteger(op.startSeq) || !Number.isSafeInteger(op.endSeq)) return false;
+  const start = op.startSeq as number;
+  const end = op.endSeq as number;
+  // Replacement endpoints follow surface position, not numeric log order.
+  if (start < 0 || end < 0 || start >= (previous.seq as number) || end >= (previous.seq as number)) return false;
+  const marker = record(previous.data);
+  if (previous.type !== "compaction/prune" && previous.type !== "compaction/summary") return false;
+  const range = record(marker.shadowedRange);
+  if (range.start !== start || range.end !== end) return false;
+  const data = record(event.data);
+  if (previous.type === "compaction/prune") {
+    return event.type === "tool/result" && start === end
+      && Array.isArray(marker.shadowedSeqs) && marker.shadowedSeqs.length === 1
+      && marker.shadowedSeqs[0] === start;
+  }
+  if (event.type !== "user/message") return false;
+  const source = record(data.source);
+  return source.kind === "compact-checkpoint" && typeof marker.compactionId === "string"
+    && source.compactionId === marker.compactionId;
 }
 
 function textUpdates(message: RecordValue, kind: string): RecordValue[] {

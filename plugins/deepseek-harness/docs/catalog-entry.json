@@ -7,7 +7,7 @@
   ],
   "caveats": [
     "Experimental: Paseo >=0.11.0 (SDK-tested with 0.11.4 and 0.15.3), daemon Node >=22.19, and a separately installed official DSH with credentials.",
-    "Requires DSH 0.1.5-rc.1 or newer (no-inference provider checks through 0.2.2-rc.1). DSH 0.2.2-rc.1 requires Node >=24.9; configured-session history recovery requires beta.19, currently unpublished source. Plugins and DSH tools are trusted, unsandboxed code.",
+    "Requires DSH 0.1.5-rc.1 or newer (no-inference provider checks through 0.2.2-rc.1). DSH 0.2.2-rc.1 requires Node >=24.9; configured-session history recovery requires beta.19. Correlated compaction/pruning preserves original messages and full tool output; attachments and unknown replacements remain unsupported. Plugins and DSH tools are trusted, unsandboxed code.",
     "Restores native DSH context and, on Paseo 0.13+, replays recognised v4 text logs from the session DSH_HOME. Missing, corrupt, unsupported or over-limit logs leave an empty timeline without blocking resume.",
     "The Usage panel reads the DeepSeek API key the way DSH does and sends it only to DeepSeek's balance endpoint.",
     "No raw token deltas, slash commands, steering, plans or terminal UI; image history is not replayed and real MCP services are untested.",

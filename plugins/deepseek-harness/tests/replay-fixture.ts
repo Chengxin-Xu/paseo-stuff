@@ -2,6 +2,28 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { zstdCompressSync } from "node:zlib";
 
+/** Synthetic append-only compaction history; originals stay in the log. */
+export function appendCompactionFixture(rows: Record<string, any>[], id = "compact-1"): void {
+  const add = (type: string, data: unknown, surfaceOp?: unknown) => {
+    const seq = rows.length - 1;
+    rows.push({ type, seq, time: 1793232000000 + seq, data, ...(surfaceOp ? { surfaceOp } : {}) });
+  };
+  add("compaction/prune", { shadowedRange: { start: 4, end: 4 }, shadowedSeqs: [4], shadowedTokenCount: 42 });
+  add("tool/result", { message: { ...rows[5].data.message, content: [{ type: "text", text: "PRUNED-OUTPUT" }] } },
+    { op: "replace", startSeq: 4, endSeq: 4 });
+  add("compaction/start", { compactionId: id, turn: 1 });
+  add("compaction/summary", {
+    compactionId: id, shadowedRange: { start: 1, end: 5 }, shadowedSeqs: [1, 2, rows.length - 3, 5],
+    summary: [{ type: "text", text: "INTERNAL-SUMMARY" }], shadowedTokenCount: 100,
+  });
+  add("user/message", {
+    id: id + "-checkpoint", role: "user", source: { kind: "compact-checkpoint", compactionId: id },
+    content: [{ type: "text", text: "INTERNAL-CHECKPOINT" }],
+  }, { op: "replace", startSeq: 1, endSeq: 5 });
+  add("compaction/end", { compactionId: id, turn: 1 });
+  add("web/deepseek-search-llm-request", { body: { messages: [{ content: "INTERNAL-SEARCH-REQUEST" }] } });
+}
+
 /** Authored synthetic JSONL, compressed into several independent flush frames. */
 export async function writeReplayFixture(
   home: string,

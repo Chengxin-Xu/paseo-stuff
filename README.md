@@ -19,14 +19,15 @@ the pinned **0.13.2** SDK and the **0.15.3** SDK; host-pipeline tests use actual
 macOS 0.15.3 daemon. The upstream reply-folding fix is merged but absent from that
 release, so the native-row/native-reply workarounds still apply.
 
-DeepSeek Harness requires Paseo **0.11.0**. **Beta.19 source is unpublished** and
-fixes history recovery after DSH records model/reasoning selections. Its checks
+DeepSeek Harness requires Paseo **0.11.0**. **Beta.19** restores original displayed
+history after context compaction and pruning, including repeated prefix compaction,
+and recognises DSH model/reasoning selection records. Its checks
 pass with the pinned **0.11.4** and target **0.15.3** SDKs, and the production
 provider initializes, lists sessions/models and reopens persistence with official
 **DSH 0.2.2-rc.1** without model calls. Its packed source also loads on an isolated
 0.15.3 daemon, with provider diagnostic Ready and catalog discovery passing.
 That CLI requires **Node.js >=24.9.0**.
-The published plugin remains **beta.18**; its install tag has not changed.
+Direct Git installs are pinned to the beta.19 release tag.
 
 The latest live web-client checks remain on Paseo **0.14.0** with DSH
 **0.2.1-rc.5**. Native mobile acceptance is not complete. Requirements are minimums;

@@ -1,20 +1,25 @@
 # Verification and limits
 
-## Beta.19 source — Paseo 0.15.3 and DSH 0.2.2-rc.1 (2026-11-07)
+## Beta.19 — Paseo 0.15.3 and DSH 0.2.2-rc.1 (2026-11-07)
 
-- **Unpublished source**, prepared as beta.19 for the model-selection replay fix.
-  The published beta.18 package and the user's disabled installations were not
-  replaced, enabled, reloaded or restarted.
+- Beta.19 includes model-selection replay and original-history recovery after
+  compaction/pruning. The user's installations were not replaced, enabled,
+  reloaded or restarted.
+- Regressions preserve the full original transcript through repeated prefix
+  compaction where the newer checkpoint precedes older retained messages.
+  Replacement endpoints are nonnegative safe integers earlier than the marker;
+  exact marker range, event type and compaction-ID checks remain. Unknown or
+  malformed replacements retain the unsupported-history fallback.
 - Read `https://paseo.sh/llms.txt`, then the tagged Paseo **v0.15.3**
   [plugin reference](https://github.com/getpaseo/paseo/blob/v0.15.3/public-docs/plugins/reference.md)
   and [provider reference](https://github.com/getpaseo/paseo/blob/v0.15.3/public-docs/plugins/providers.md).
   The daemon-resolved launch and public ACP provider interfaces remain compatible.
 - `npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund`, then
   `npm run check`, passes with pinned **0.11.4** client/plugin/protocol SDKs:
-  typecheck, lint (zero warnings/errors), **153 tests in six files**.
+  typecheck, lint (zero warnings/errors), **171 tests in six files**.
 - Install the target with
   `npm install --ignore-scripts --legacy-peer-deps --no-save --package-lock=false --no-audit --no-fund @getpaseo/client@0.15.3 @getpaseo/plugin@0.15.3 @getpaseo/protocol@0.15.3`.
-  The same `npm run check` passes. Both suites ran on macOS with Node **22.23.4**.
+  The same `npm run check` passes. Both suites ran on macOS with Node **24.18.0**.
   Minimum SDK pins stay at 0.11.4; only the package version changes in the lockfile.
 - Install the official **@deepseek-ai/dsh 0.2.2-rc.1** closure in an isolated
   temporary prefix with `--ignore-scripts`. CLI, ACP, ACP app, Session and JSONL
@@ -54,11 +59,12 @@
   Session format is still **v4** in `session.v4.jsonl.zstd`, with the same
   project/session layout and independently appended Zstandard frames.
   Native resume still supplies context without transcript replay.
-- Compaction is still outside supported replay. Current upstream surface ranges
-  are ordered by positions in `session.surface.nodes`, not numeric sequence order.
-  This retains the non-monotonic-range concern on external PR **#52**, which was
-  not incorporated. Its head remains `2ac6680b5febe66b4f7899c915cd2cc0c02d513b`
-  (open, last updated 2026-11-05); the existing awaiting-contributor decision stays.
+- Compaction replay follows upstream positions in `session.surface.nodes`, not
+  numeric sequence order. Repeated-prefix coverage exercises a newer checkpoint
+  before an older retained turn; the complete original transcript, including full
+  tool output, is identical before and after compaction, and the log is unchanged.
+  Negative/forward endpoints, marker-range mismatches, wrong event/source types,
+  wrong compaction IDs and unrelated replacements still fail safely.
 - Local evidence: `/tmp/dsh-022rc1-verification/` contains the two check logs,
   install logs, official package/lock, tag comparison, raw/bridge ACP JSON,
   production-provider JSON and probe scripts. Temporary homes contain synthetic
@@ -70,8 +76,8 @@
   The package loads as **running**, enabled and without an error, on actual
   **Paseo 0.15.3** through the installed app's bundled CLI/server.
 - That daemon uses its own home,
-  `/tmp/dsh-022rc1-verification/daemon-home`, explicit
-  `127.0.0.1:6867` listener and disabled relay. Start with
+  `<release-probe>/daemon-home` under a temporary `paseo-beta19-release-*`
+  directory, explicit `127.0.0.1:6868` listener and disabled relay. Start with
   `paseo --json daemon start --home <isolated-home> --timeout 30`.
   Its clean environment uses a temporary OS home, temporary `DSH_HOME`, and
   `PATH` prefixed with Node **24.18.0** and the isolated official DSH binaries.
@@ -86,19 +92,20 @@
   options. No Paseo agent, model prompt or tool execution is created.
 - Stop with `paseo daemon stop --home <isolated-home> --timeout 20 --json`.
   Shutdown is graceful (`forced: false`), the plugin logs **Plugin stopped**,
-  the worker exits **0**, and status reports `localDaemon: "stopped"` with
-  no PID. Process and TCP checks find no owned children or listener on 6867.
-  Shutdown metrics show zero agents, zero terminals and zero inflight requests.
-  No subagents, schedules or other queued work were created.
-- Packed-load evidence is in the same temporary directory: `pack.json`,
-  `packed-install.log`, `daemon-cli-version.txt`, `daemon-plugin.json`,
-  `daemon-diagnostic.json`, `daemon-models.json`, `daemon-stop.json` and
-  `daemon-stopped-status.json`. The only ignored repository directory is
-  `node_modules`, reconstructible from the lockfile; pack staging was restored.
+  and status reports `localDaemon: "stopped"` with no PID. The daemon/launcher
+  PIDs are gone and no listener remains on 6868. No Paseo agents, terminals,
+  subagents, schedules or queued work were created. The temporary daemon key
+  was removed after shutdown.
+- Final release packed-load evidence is in the temporary release-probe directory:
+  `pack.json`, `install.log`, `plugin.json`, `diagnostic.json`, `models.json`,
+  `stop.json` and `stopped.json`. Summaries and the directory location are also
+  retained outside temporary worktrees under
+  `.scratch/upstream-compat-watch/evidence/2026-11-07/release-beta19-*`.
+  Pack staging was restored; `node_modules` is reconstructible from the lockfile.
 - **Boundary:** no 0.15.3 client/UI or real model turn was exercised.
   Real-model, session-history recovery across a daemon restart and image
   interpretation remain covered by the Paseo **0.14.0** / DSH **0.2.1-rc.5**
-  checks below. Windows and native mobile were not exercised.
+  checks below. Manual Windows and native mobile checks were not performed.
 
 ## Beta.18 — default ACP image startup (2026-10-31)
 

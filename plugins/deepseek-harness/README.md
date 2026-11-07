@@ -26,11 +26,10 @@ patched Paseo app is required.
 > On Paseo 0.8 to 0.10, install beta.12 instead:
 > `paseo plugin add geoqiao/paseo-stuff:plugins/deepseek-harness --ref deepseek-harness-v0.1.0-beta.12`.
 
-**Source status:** beta.19 is unpublished. Its history-recovery fix skips DSH's
-recorded model/reasoning selections when rebuilding the transcript. With DSH
-0.2.2-rc.1, published beta.18 can restore context but show an unsupported-history
-warning after a model or reasoning choice. The direct Git install below remains
-pinned to the published beta.18 tag.
+**Beta.19** restores displayed history after DSH context compaction and tool-output
+pruning, retaining original messages and full tool results. It also skips recorded
+model/reasoning selections, avoiding beta.18's unsupported-history warning after
+configuration changes with DSH 0.2.2-rc.1.
 
 ## What it does
 
@@ -164,10 +163,14 @@ from the launched session's `DSH_HOME` (session environment overrides launch
 environment), with the same path expansion as the Usage source. It does not
 modify the log or create a second copy of it.
 
-Replay recognises version 4 and the mapped event/content shapes only.
-Model/reasoning selection records are skipped as bookkeeping in beta.19. Missing,
+Replay recognises version 4 and the mapped event/content shapes only. It preserves
+the original append-only conversation across compaction and pruning, including full
+tool output. Internal summaries, correlated checkpoint/pruned-result replacements,
+model/reasoning selections and DeepSeek search requests are omitted. Replacements
+must match the immediately preceding compaction marker; endpoints follow current
+context positions and may have decreasing log sequence numbers. Missing,
 corrupt or changed files, newer generations, unknown events, unsupported content
-(such as attachments) or surface replacements leave the timeline empty while
+(such as attachments) or unrecognised surface replacements leave the timeline empty while
 DSH still restores context. Reads are capped at 16 MiB compressed, 64 MiB decoded,
 50,000 records/updates and one second; exceeding a cap discards the entire replay.
 After a successful context resume with history recovery requested, a brief
@@ -243,7 +246,7 @@ npm package. The `paseo-plugin.json` in the Git source retains those build steps
 To install the pinned Git prerelease instead, run:
 
 ~~~sh
-paseo plugin add git:geoqiao/paseo-stuff:plugins/deepseek-harness --ref deepseek-harness-v0.1.0-beta.18 --host <your-host>
+paseo plugin add git:geoqiao/paseo-stuff:plugins/deepseek-harness --ref deepseek-harness-v0.1.0-beta.19 --host <your-host>
 paseo plugin ls --host <your-host>
 ~~~
 
@@ -262,7 +265,7 @@ the resolved launch, the process helpers, provider `status()` and usage
 sources. Under Paseo's requirements contract, a minimum-only range admits
 0.11.0 and every later release, including prereleases and future breaking
 releases; it is not a promise that untested versions work. Typecheck, lint and
-all 153 tests pass with the pinned 0.11.4 SDK and the no-save 0.15.3 SDK.
+all 171 tests pass with the pinned 0.11.4 SDK and the no-save 0.15.3 SDK.
 The production provider factory also passes no-inference checks against official
 DSH 0.2.2-rc.1 on Node 24.18.0 with SDK 0.15.3, including persistence reopen in a
 fresh process. Real model turns ran on macOS daemons 0.11.4, 0.12.0-beta.2,

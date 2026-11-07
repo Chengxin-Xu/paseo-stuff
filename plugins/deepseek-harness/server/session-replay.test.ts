@@ -3,7 +3,7 @@ import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { zstdCompressSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { writeReplayFixture } from "../tests/replay-fixture";
+import { appendCompactionFixture, writeReplayFixture } from "../tests/replay-fixture";
 import { resolveDshHome } from "./dsh-home";
 import { buildSessionReplay } from "./session-replay";
 
@@ -88,6 +88,119 @@ describe("DSH v4 transcript replay", () => {
       status: "failed", rawOutput: { content: [{ content: { text: "x".repeat(20_000) + "tail-marker" } }] },
     });
   });
+
+  it("preserves original history through pruning and repeated compaction without modifying the log", async () => {
+    await writeReplayFixture(home);
+    const original = await replay();
+    const path = await writeReplayFixture(home, undefined, undefined, (rows) => {
+      appendCompactionFixture(rows);
+      const seq = rows.length - 1;
+      rows.push({ type: "user/message", seq, time: 0, surfaceOp: "append", data: {
+        id: "after-compact", source: { kind: "user" }, content: [{ type: "text", text: "Continue after compaction." }],
+      } });
+      rows.push({ type: "assistant/message", seq: seq + 1, time: 0, surfaceOp: "append", data: { message: {
+        id: "answer-after-compact", content: [{ type: "text", text: "Resumed answer." }],
+      } } });
+      const add = (type: string, data: unknown, surfaceOp?: unknown) => rows.push({
+        type, seq: rows.length - 1, time: 0, data, ...(surfaceOp ? { surfaceOp } : {}),
+      });
+      // The second compaction replaces the previous checkpoint and the new turn.
+      const range = { start: 11, end: seq + 1 };
+      add("compaction/start", { compactionId: "compact-2", turn: 2 });
+      add("compaction/summary", { compactionId: "compact-2", shadowedRange: range, shadowedSeqs: [11, seq, seq + 1] });
+      add("user/message", { id: "checkpoint-2", source: { kind: "compact-checkpoint", compactionId: "compact-2" },
+        content: [{ type: "text", text: "INTERNAL-SECOND-CHECKPOINT" }],
+      }, { op: "replace", startSeq: range.start, endSeq: range.end });
+      add("compaction/end", { compactionId: "compact-2", turn: 2 });
+    });
+    const before = await readFile(path);
+    const frames = await replay();
+    expect(frames.slice(0, original.length)).toEqual(original);
+    expect(frames.slice(original.length).map((frame) => (frame as any).params.update.content.text))
+      .toEqual(["Continue after compaction.", "Resumed answer."]);
+    expect(await result()).toEqual({ frames });
+    expect(await readFile(path)).toEqual(before);
+  });
+
+  it("preserves history when repeated prefix compaction has decreasing endpoint sequences", async () => {
+    const appendSecondTurn = (rows: Record<string, any>[]) => {
+      const add = (type: string, data: unknown, surfaceOp?: unknown) => rows.push({
+        type, seq: rows.length - 1, time: 0, data, ...(surfaceOp ? { surfaceOp } : {}),
+      });
+      add("turn/start", { turn: 1 });
+      add("user/message", { id: "retained-user", source: { kind: "user" },
+        content: [{ type: "text", text: "Keep the second turn." }],
+      }, "append");
+      add("assistant/message", { turn: 1, step: 0, message: {
+        id: "retained-answer", content: [{ type: "text", text: "Retained second answer." }],
+      } }, "append");
+      add("turn/end", { turn: 1, reason: "completed" });
+    };
+    await writeReplayFixture(home, undefined, undefined, appendSecondTurn);
+    const original = await result();
+    expect(original.failure).toBeUndefined();
+    expect(original.frames).toHaveLength(8);
+    const path = await writeReplayFixture(home, undefined, undefined, (rows) => {
+      appendSecondTurn(rows);
+      const retainedEnd = rows.find((row) => row.data?.message?.id === "retained-answer")!.seq;
+      appendCompactionFixture(rows);
+      const checkpoint = rows.find((row) => row.data?.source?.kind === "compact-checkpoint")!;
+      // The newer checkpoint sits before the older, retained second turn.
+      const range = { start: checkpoint.seq, end: retainedEnd };
+      expect(range.start).toBeGreaterThan(range.end);
+      const add = (type: string, data: unknown, surfaceOp?: unknown) => rows.push({
+        type, seq: rows.length - 1, time: 0, data, ...(surfaceOp ? { surfaceOp } : {}),
+      });
+      add("compaction/start", { compactionId: "prefix-2", turn: 1 });
+      add("compaction/summary", { compactionId: "prefix-2", shadowedRange: range });
+      add("user/message", { id: "prefix-checkpoint-2",
+        source: { kind: "compact-checkpoint", compactionId: "prefix-2" },
+        content: [{ type: "text", text: "INTERNAL-PREFIX-CHECKPOINT" }],
+      }, { op: "replace", startSeq: range.start, endSeq: range.end });
+      add("compaction/end", { compactionId: "prefix-2", turn: 1 });
+    });
+    const before = await readFile(path);
+    expect(await result()).toEqual(original);
+    expect(await readFile(path)).toEqual(before);
+  });
+
+  it.each(["start", "summary", "end"])("keeps original history when a compaction stops after %s", async (phase) => {
+    await writeReplayFixture(home);
+    const original = await replay();
+    await writeReplayFixture(home, undefined, undefined, (rows) => {
+      appendCompactionFixture(rows);
+      const end = rows.findIndex((row) => row.type === "compaction/" + phase);
+      rows.splice(end + 1);
+    });
+    expect(await result()).toEqual({ frames: original });
+  });
+
+  it.each(["range", "id", "source", "kind", "operation", "forward-range", "negative-range", "forward-start", "negative-end", "prune-range", "prune-target", "intervening-event"])(
+    "rejects an unrecognised compaction rewrite: %s", async (mode) => {
+      await writeReplayFixture(home, undefined, undefined, (rows) => {
+        appendCompactionFixture(rows);
+        const checkpoint = rows.find((row) => row.data?.source?.kind === "compact-checkpoint")!;
+        const prune = rows.find((row) => row.type === "compaction/prune")!;
+        if (mode === "range") checkpoint.surfaceOp.endSeq = 4;
+        if (mode === "id") checkpoint.data.source.compactionId = "other";
+        if (mode === "source") checkpoint.data.source.kind = "user";
+        if (mode === "kind") checkpoint.type = "assistant/message";
+        if (mode === "operation") checkpoint.surfaceOp.op = "delete";
+        if (mode === "forward-range") checkpoint.surfaceOp.endSeq = checkpoint.seq;
+        if (mode === "negative-range") checkpoint.surfaceOp.startSeq = -1;
+        const summary = rows.find((row) => row.type === "compaction/summary")!;
+        if (mode === "forward-start") summary.data.shadowedRange.start = checkpoint.surfaceOp.startSeq = checkpoint.seq;
+        if (mode === "negative-end") summary.data.shadowedRange.end = checkpoint.surfaceOp.endSeq = -1;
+        if (mode === "prune-range") prune.data.shadowedRange.start = 3;
+        if (mode === "prune-target") prune.data.shadowedSeqs = [3];
+        if (mode === "intervening-event") {
+          rows.splice(rows.indexOf(checkpoint), 0, { type: "step/start", data: {} });
+          rows.slice(1).forEach((row, seq) => { row.seq = seq; row.time = 0; });
+        }
+      });
+      expect((await result()).failure).toBe("unsupported");
+    },
+  );
 
   it.each([3, 5])("skips an unsupported header version %s", async (version) => {
     await writeReplayFixture(home, undefined, undefined, (rows) => { rows[0].version = version; });

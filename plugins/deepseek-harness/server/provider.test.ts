@@ -13,7 +13,7 @@ import {
   type ProviderLaunch,
 } from "@getpaseo/plugin/server/provider";
 import serverEntry from "../index.server";
-import { writeReplayFixture } from "../tests/replay-fixture";
+import { appendCompactionFixture, writeReplayFixture } from "../tests/replay-fixture";
 import {
   createDeepSeekHarnessProvider,
   type ManagedDeepSeekHarnessProvider,
@@ -191,7 +191,7 @@ describe.sequential("DeepSeek Harness provider", () => {
     }
   });
 
-  it.each(["success", "empty", "oversized", "unsupported", "missing", "corrupt"] as const)(
+  it.each(["success", "compacted", "empty", "oversized", "unsupported", "missing", "corrupt"] as const)(
     "reports only failed transcript recovery through the production provider: %s",
     async (mode) => {
       const connection = await connect();
@@ -203,6 +203,7 @@ describe.sequential("DeepSeek Harness provider", () => {
         const home = input.config.env!.DSH_HOME;
         if (mode !== "missing") {
           const path = await writeReplayFixture(home, "native-recovery-" + mode, cwdA, (rows) => {
+            if (mode === "compacted") appendCompactionFixture(rows);
             if (mode === "empty") rows.splice(1);
             if (mode === "unsupported") rows[6].data.message.content = [{ type: "image", data: "private-image-api_key=secret", mimeType: "image/png" }];
           });
@@ -216,9 +217,24 @@ describe.sequential("DeepSeek Harness provider", () => {
         await connection.send(input);
         await waitForReady(collector, input.sessionId);
         const notices = collector.events.filter((event) => event.type === "session.notice");
-        if (mode === "success" || mode === "empty") {
+        if (mode === "success" || mode === "compacted" || mode === "empty") {
           expect(notices).toEqual([]);
           if (mode === "empty") expect(collector.events.filter((event) => event.type === "timeline.item")).toEqual([]);
+          if (mode === "compacted") {
+            const history = collector.events.filter((event) => event.type === "timeline.item");
+            const sdk = JSON.parse(await readFile(new URL("../node_modules/@getpaseo/plugin/package.json", import.meta.url), "utf8"));
+            if (Number(sdk.version.split(".")[1]) >= 13) {
+              expect(history).toEqual(expect.arrayContaining([
+                expect.objectContaining({ item: expect.objectContaining({ type: "user_message", text: "Read the synthetic note." }) }),
+                expect.objectContaining({ item: expect.objectContaining({ type: "assistant_message", text: "The note says violet-4817." }) }),
+                expect.objectContaining({ item: expect.objectContaining({ type: "tool_call", status: "completed" }) }),
+              ]));
+              expect(JSON.stringify(history)).toContain("Synthetic note: violet-4817.");
+            } else expect(history).toEqual([]);
+            for (const internal of ["PRUNED-OUTPUT", "INTERNAL-SUMMARY", "INTERNAL-CHECKPOINT", "INTERNAL-SEARCH-REQUEST"]) {
+              expect(JSON.stringify(history)).not.toContain(internal);
+            }
+          }
         } else {
           const suffix = {
             oversized: "it exceeds the recovery limit.",
