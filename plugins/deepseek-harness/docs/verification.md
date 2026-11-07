@@ -88,8 +88,6 @@
   Shutdown is graceful (`forced: false`), the plugin logs **Plugin stopped**,
   the worker exits **0**, and status reports `localDaemon: "stopped"` with
   no PID. Process and TCP checks find no owned children or listener on 6867.
-  The host's unrelated local speech-model download logs an abort during shutdown;
-  provider discovery and process cleanup succeed.
   Shutdown metrics show zero agents, zero terminals and zero inflight requests.
   No subagents, schedules or other queued work were created.
 - Packed-load evidence is in the same temporary directory: `pack.json`,

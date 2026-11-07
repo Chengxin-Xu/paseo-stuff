@@ -23,7 +23,9 @@ DeepSeek Harness requires Paseo **0.11.0**. **Beta.19 source is unpublished** an
 fixes history recovery after DSH records model/reasoning selections. Its checks
 pass with the pinned **0.11.4** and target **0.15.3** SDKs, and the production
 provider initializes, lists sessions/models and reopens persistence with official
-**DSH 0.2.2-rc.1** without model calls. That CLI requires **Node.js >=24.9.0**.
+**DSH 0.2.2-rc.1** without model calls. Its packed source also loads on an isolated
+0.15.3 daemon, with provider diagnostic Ready and catalog discovery passing.
+That CLI requires **Node.js >=24.9.0**.
 The published plugin remains **beta.18**; its install tag has not changed.
 
 The latest live web-client checks remain on Paseo **0.14.0** with DSH
