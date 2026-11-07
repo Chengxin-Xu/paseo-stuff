@@ -35,9 +35,13 @@ lock ownership blocks writes. Use the actual current daemon and schedule IDs.
 ## Operational boundaries
 
 The daily result is the status surface: last successful check, changes processed,
-waiting items and exact user actions. Public responses remain drafts until the
-owner grants sending permission. Publishing, merging and changing the main
-daemon's plugin state require their own recorded authorization.
+waiting items and exact user actions. Since 2026-11-07, the owner authorizes
+verified replies and review comments on existing issues/PRs in
+`geoqiao/paseo-stuff`. Record each response URL and the activity/head it answers;
+do not duplicate replies or react to the task's own response. External-repository
+messages, new issues/PRs, closing issues, pushing, publishing, merging and changing
+the main daemon's plugin state require their own recorded authorization.
+One-off release/merge permissions do not become standing daily permissions.
 
 A merged upstream fix stays pending until a released tag contains it and the
 affected plugin behavior has been verified. A green unit suite is not a native
