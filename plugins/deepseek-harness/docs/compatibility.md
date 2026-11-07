@@ -45,7 +45,7 @@ collapsed Thinking block and the answer contained only the reply text. Mobile
 was not checked. The shim does not repair host timeline items stored before
 the fix. The plugin's minimum Paseo requirement is unchanged.
 
-## v4 session history replay (unreleased)
+## v4 session history replay
 
 The compatibility stream now replays recognised v4 logs before a successful
 translated load response; native load and resume errors bypass it. The historical
@@ -53,6 +53,36 @@ translated load response; native load and resume errors bypass it. The historica
 and 0.14 admit updates in its load replay window. The provider regression checks that
 window on 0.13.2 and 0.14.0 and explicitly records the empty-history behavior of the minimum 0.11.4
 SDK. See [verification.md](verification.md) for the executed checks and limits.
+
+## Paseo 0.15.3 and DSH 0.2.2-rc.1
+
+The 0.15.3 public SDK retains the resolved launch and ACP load-replay interfaces.
+Typecheck, lint and 153 tests pass with both the pinned 0.11.4 SDK and no-save
+0.15.3 SDK. The production provider also passes official DSH 0.2.2-rc.1
+initialization, catalog/list, configured-session persistence reopen and cleanup
+on Node 24.18.0 without model calls. DSH now requires Node 24.9+ for its CLI;
+the plugin's Node 22.19+ requirement remains useful for older DSH versions.
+
+Compared with 0.2.1-rc.5, the
+[ACP configuration path](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-rc.1/packages/acp/acp/src/index.ts)
+now delegates model changes to the Agent's durable model selection. A configured
+session records `model/selection` events even before a model prompt. Beta.19
+skips those bookkeeping events so they do not discard the transcript or produce
+an unsupported-history warning. Beta.19 is unpublished source.
+
+The official peer still advertises resume without legacy load, shares reasoning
+and answer message IDs, writes v4 logs and ships the stale default ACP model.
+The existing resume, reasoning and image-startup adapters remain in place.
+The raw ACP advertises images as disabled; the private startup repair enables
+the real image capability without changing user configuration.
+
+The current
+[surface implementation](https://github.com/deepseek-ai/deepseek-harness/blob/dsh-v0.2.2-rc.1/packages/core/session/src/surface.ts)
+orders replacement ranges by surface position. Event sequence IDs can be
+non-monotonic after replacement, so numeric start/end ordering is not a valid
+compaction assumption. External PR #52 remains unincorporated and awaiting its
+contributor; compaction/replacement histories retain the existing safe fallback.
+See [verification.md](verification.md) for scope and evidence.
 
 ## Paseo 0.14.0
 

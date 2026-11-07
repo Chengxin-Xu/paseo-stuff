@@ -1,5 +1,73 @@
 # Verification and limits
 
+## Beta.19 source — Paseo 0.15.3 and DSH 0.2.2-rc.1 (2026-11-07)
+
+- **Unpublished source**, prepared as beta.19 for the model-selection replay fix.
+  The published beta.18 package and the user's disabled installations were not
+  replaced, enabled, reloaded or restarted.
+- Read `https://paseo.sh/llms.txt`, then the tagged Paseo **v0.15.3**
+  [plugin reference](https://github.com/getpaseo/paseo/blob/v0.15.3/public-docs/plugins/reference.md)
+  and [provider reference](https://github.com/getpaseo/paseo/blob/v0.15.3/public-docs/plugins/providers.md).
+  The daemon-resolved launch and public ACP provider interfaces remain compatible.
+- `npm ci --ignore-scripts --legacy-peer-deps --no-audit --no-fund`, then
+  `npm run check`, passes with pinned **0.11.4** client/plugin/protocol SDKs:
+  typecheck, lint (zero warnings/errors), **153 tests in six files**.
+- Install the target with
+  `npm install --ignore-scripts --legacy-peer-deps --no-save --package-lock=false --no-audit --no-fund @getpaseo/client@0.15.3 @getpaseo/plugin@0.15.3 @getpaseo/protocol@0.15.3`.
+  The same `npm run check` passes. Both suites ran on macOS with Node **22.23.4**.
+  Minimum SDK pins stay at 0.11.4; only the package version changes in the lockfile.
+- Install the official **@deepseek-ai/dsh 0.2.2-rc.1** closure in an isolated
+  temporary prefix with `--ignore-scripts`. CLI, ACP, ACP app, Session and JSONL
+  persistence packages resolve to **0.2.2-rc.1**; ACP SDK remains **1.4.0**.
+  npm `latest` and `next` both resolve to that CLI version.
+- DSH's [release](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.2-rc.1)
+  and package engine require **Node >=24.9.0**. Real-package probes used isolated
+  **Node 24.18.0**, launching the actual CLI through that executable. The plugin
+  still supports Node 22.19+ for older DSH releases; the chosen DSH command must
+  satisfy DSH's own newer runtime requirement.
+- An unmodified official ACP process initializes with `session/list`,
+  `session/resume`, `session/close`, HTTP MCP and no legacy `loadSession`.
+  `session/list` returns an empty list in the fresh home. The unmodified ACP
+  profile still advertises `image: false`; the production startup repair changes
+  it to `image: true`. Its base/ACP default-model mismatch persists in rc.1.
+- The production `createDeepSeekHarnessProvider` factory, using the installed
+  **0.15.3** public SDK, reports available status, initializes and maps
+  message/image/configure/list/persistence/permission capabilities. Commands and
+  steering stay absent. Catalog discovery returns one default model,
+  `["deepseek-official","deepseek-flash"]`, and `off/low/high/max` reasoning choices.
+  All collected events pass the public `ProviderEventSchema`.
+- Open a session with that model and reasoning `off`, close it and its connection,
+  then reopen the same persistence through a new ACP process with history requested.
+  Native identity is preserved; initialization bookkeeping leaves a valid empty
+  displayed transcript and no recovery warning. Close the connection and dispose
+  the provider; no probe-owned processes remain.
+- DSH now records model changes through `AgentModel.select` in the ACP config
+  path. Those v4 `model/selection` records are bookkeeping and are skipped.
+  A targeted synthetic multi-frame regression inserts model/reasoning selections
+  before and after text/tool events and requires identical complete replay.
+  Real-package verification above covers persisted configured-session reopen;
+  no model prompt, credential, tool execution or paid inference was used.
+- Compared official tags **dsh-v0.2.1-rc.5**
+  (`b830ec950faba0a46dda564be3e2d854afed94f1`) and **dsh-v0.2.2-rc.1**
+  (`66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`) and published packages.
+  Reasoning/answer IDs still share the native message ID; the suffix remains.
+  Session format is still **v4** in `session.v4.jsonl.zstd`, with the same
+  project/session layout and independently appended Zstandard frames.
+  Native resume still supplies context without transcript replay.
+- Compaction is still outside supported replay. Current upstream surface ranges
+  are ordered by positions in `session.surface.nodes`, not numeric sequence order.
+  This retains the non-monotonic-range concern on external PR **#52**, which was
+  not incorporated. Its head remains `2ac6680b5febe66b4f7899c915cd2cc0c02d513b`
+  (open, last updated 2026-11-05); the existing awaiting-contributor decision stays.
+- Local evidence: `/tmp/dsh-022rc1-verification/` contains the two check logs,
+  install logs, official package/lock, tag comparison, raw/bridge ACP JSON,
+  production-provider JSON and probe scripts. Temporary homes contain synthetic
+  initialization/configuration data only, with no copied credentials.
+- **Boundary:** no Paseo 0.15.3 daemon or client was started for these checks.
+  Real-model, daemon-restart, image-interpretation and UI evidence remains the
+  Paseo **0.14.0** / DSH **0.2.1-rc.5** checks below. Windows and native mobile
+  were not exercised.
+
 ## Beta.18 — default ACP image startup (2026-10-31)
 
 - Root cause confirmed in published **DSH 0.2.1-rc.5**: the base

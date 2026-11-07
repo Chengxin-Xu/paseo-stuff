@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.0-beta.19 — unreleased
+
+- Keep v4 history replay working when DSH 0.2.2-rc.1 records model/reasoning
+  changes through ACP configuration. Treat `model/selection` as bookkeeping;
+  preserve text/tool history and keep compaction/replacement limits unchanged.
+- Verify official DSH 0.2.2-rc.1 with the production provider on Node 24.18.0:
+  initialization, capability mapping, catalog, session list, fresh-process
+  persistence reopen and clean close, without credentials or model calls.
+- Typecheck, lint and all 153 tests pass with the pinned Paseo 0.11.4 SDK and
+  the no-save 0.15.3 target SDK. Keep minimum SDK pins unchanged. This source
+  version has not been published.
+- Update prerequisites for DSH's Node.js 24.9.0 minimum and document the
+  retained resume bridge, v4 replay limits and default-image startup repair.
+  Daemon/UI and real-model verification remain at Paseo 0.14.0 / DSH 0.2.1-rc.5.
+
 ## 0.1.0-beta.18 — 2026-10-31
 
 - Repair DSH rc.5's stale official ACP startup default using a private process-only
