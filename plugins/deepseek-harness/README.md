@@ -267,7 +267,9 @@ The production provider factory also passes no-inference checks against official
 DSH 0.2.2-rc.1 on Node 24.18.0 with SDK 0.15.3, including persistence reopen in a
 fresh process. Real model turns ran on macOS daemons 0.11.4, 0.12.0-beta.2,
 0.13.0, 0.13.2 and 0.14.0; the newest real-turn check used DSH 0.2.1-rc.5.
-The 0.15.3 checks did not load the plugin into a daemon or exercise its UI.
+The beta.19 tarball also loads as running on an isolated 0.15.3 daemon, with
+provider diagnostic Ready and model/reasoning discovery passing without model
+calls. No 0.15.3 UI or real model turn was exercised.
 Do not restart the daemon for this plugin. Follow Paseo's
 global plugin-enable and per-installation
 enable/disable rules; an existing disabled installation should remain

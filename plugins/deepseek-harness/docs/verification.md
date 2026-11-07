@@ -63,10 +63,44 @@
   install logs, official package/lock, tag comparison, raw/bridge ACP JSON,
   production-provider JSON and probe scripts. Temporary homes contain synthetic
   initialization/configuration data only, with no copied credentials.
-- **Boundary:** no Paseo 0.15.3 daemon or client was started for these checks.
-  Real-model, daemon-restart, image-interpretation and UI evidence remains the
-  Paseo **0.14.0** / DSH **0.2.1-rc.5** checks below. Windows and native mobile
-  were not exercised.
+- **Packed daemon load:** `npm pack` produces
+  `paseo-deepseek-harness-0.1.0-beta.19.tgz`. Unpack into a temporary directory
+  and install only its three locked runtime dependencies with
+  `npm ci --omit=dev --ignore-scripts --no-audit --no-fund`.
+  The package loads as **running**, enabled and without an error, on actual
+  **Paseo 0.15.3** through the installed app's bundled CLI/server.
+- That daemon uses its own home,
+  `/tmp/dsh-022rc1-verification/daemon-home`, explicit
+  `127.0.0.1:6867` listener and disabled relay. Start with
+  `paseo --json daemon start --home <isolated-home> --timeout 30`.
+  Its clean environment uses a temporary OS home, temporary `DSH_HOME`, and
+  `PATH` prefixed with Node **24.18.0** and the isolated official DSH binaries.
+  The provider command explicitly launches that Node executable with official
+  DSH **0.2.2-rc.1** and `--profile acp`.
+- `paseo plugin ls deepseek-harness --home <isolated-home> --json` returns
+  `status: "running"`.
+  `paseo provider diagnostic deepseek-harness --home <isolated-home> --json`
+  returns **Provider is available / Models: 1 / Status: Ready**.
+  `paseo provider models deepseek-harness --thinking --home <isolated-home> --json`
+  returns the opaque `deepseek-flash` route and `off/low/high/max` reasoning
+  options. No Paseo agent, model prompt or tool execution is created.
+- Stop with `paseo daemon stop --home <isolated-home> --timeout 20 --json`.
+  Shutdown is graceful (`forced: false`), the plugin logs **Plugin stopped**,
+  the worker exits **0**, and status reports `localDaemon: "stopped"` with
+  no PID. Process and TCP checks find no owned children or listener on 6867.
+  The host's unrelated local speech-model download logs an abort during shutdown;
+  provider discovery and process cleanup succeed.
+  Shutdown metrics show zero agents, zero terminals and zero inflight requests.
+  No subagents, schedules or other queued work were created.
+- Packed-load evidence is in the same temporary directory: `pack.json`,
+  `packed-install.log`, `daemon-cli-version.txt`, `daemon-plugin.json`,
+  `daemon-diagnostic.json`, `daemon-models.json`, `daemon-stop.json` and
+  `daemon-stopped-status.json`. The only ignored repository directory is
+  `node_modules`, reconstructible from the lockfile; pack staging was restored.
+- **Boundary:** no 0.15.3 client/UI or real model turn was exercised.
+  Real-model, session-history recovery across a daemon restart and image
+  interpretation remain covered by the Paseo **0.14.0** / DSH **0.2.1-rc.5**
+  checks below. Windows and native mobile were not exercised.
 
 ## Beta.18 — default ACP image startup (2026-10-31)
 

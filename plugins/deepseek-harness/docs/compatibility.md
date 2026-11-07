@@ -68,7 +68,9 @@ Compared with 0.2.1-rc.5, the
 now delegates model changes to the Agent's durable model selection. A configured
 session records `model/selection` events even before a model prompt. Beta.19
 skips those bookkeeping events so they do not discard the transcript or produce
-an unsupported-history warning. Beta.19 is unpublished source.
+an unsupported-history warning. Beta.19 is unpublished source. Its tarball also
+loads as running with runtime-only dependencies on an isolated 0.15.3 daemon;
+provider diagnostic and model/reasoning discovery pass without model calls.
 
 The official peer still advertises resume without legacy load, shares reasoning
 and answer message IDs, writes v4 logs and ships the stale default ACP model.

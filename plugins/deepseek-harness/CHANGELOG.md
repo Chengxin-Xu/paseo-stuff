@@ -13,7 +13,10 @@
   version has not been published.
 - Update prerequisites for DSH's Node.js 24.9.0 minimum and document the
   retained resume bridge, v4 replay limits and default-image startup repair.
-  Daemon/UI and real-model verification remain at Paseo 0.14.0 / DSH 0.2.1-rc.5.
+- Load the beta.19 tarball with runtime-only dependencies on an isolated Paseo
+  0.15.3 daemon: running plugin, Ready diagnostic and model/reasoning discovery.
+  Stop it gracefully without leftover processes. UI and real-model verification
+  remain at Paseo 0.14.0 / DSH 0.2.1-rc.5.
 
 ## 0.1.0-beta.18 — 2026-10-31
 
