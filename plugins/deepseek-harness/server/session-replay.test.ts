@@ -104,6 +104,48 @@ describe("DSH v4 transcript replay", () => {
     expect(await readFile(path)).toEqual(before);
   });
 
+  it("preserves history when repeated prefix compaction has decreasing endpoint sequences", async () => {
+    const appendSecondTurn = (rows: Record<string, any>[]) => {
+      const add = (type: string, data: unknown, surfaceOp?: unknown) => rows.push({
+        type, seq: rows.length - 1, time: 0, data, ...(surfaceOp ? { surfaceOp } : {}),
+      });
+      add("turn/start", { turn: 1 });
+      add("user/message", { id: "retained-user", source: { kind: "user" },
+        content: [{ type: "text", text: "Keep the second turn." }],
+      }, "append");
+      add("assistant/message", { turn: 1, step: 0, message: {
+        id: "retained-answer", content: [{ type: "text", text: "Retained second answer." }],
+      } }, "append");
+      add("turn/end", { turn: 1, reason: "completed" });
+    };
+    await writeReplayFixture(home, undefined, undefined, appendSecondTurn);
+    const original = await result();
+    expect(original.failure).toBeUndefined();
+    expect(original.frames).toHaveLength(8);
+    const path = await writeReplayFixture(home, undefined, undefined, (rows) => {
+      appendSecondTurn(rows);
+      const retainedEnd = rows.find((row) => row.data?.message?.id === "retained-answer")!.seq;
+      appendCompactionFixture(rows);
+      const checkpoint = rows.find((row) => row.data?.source?.kind === "compact-checkpoint")!;
+      // The newer checkpoint sits before the older, retained second turn.
+      const range = { start: checkpoint.seq, end: retainedEnd };
+      expect(range.start).toBeGreaterThan(range.end);
+      const add = (type: string, data: unknown, surfaceOp?: unknown) => rows.push({
+        type, seq: rows.length - 1, time: 0, data, ...(surfaceOp ? { surfaceOp } : {}),
+      });
+      add("compaction/start", { compactionId: "prefix-2", turn: 1 });
+      add("compaction/summary", { compactionId: "prefix-2", shadowedRange: range });
+      add("user/message", { id: "prefix-checkpoint-2",
+        source: { kind: "compact-checkpoint", compactionId: "prefix-2" },
+        content: [{ type: "text", text: "INTERNAL-PREFIX-CHECKPOINT" }],
+      }, { op: "replace", startSeq: range.start, endSeq: range.end });
+      add("compaction/end", { compactionId: "prefix-2", turn: 1 });
+    });
+    const before = await readFile(path);
+    expect(await result()).toEqual(original);
+    expect(await readFile(path)).toEqual(before);
+  });
+
   it.each(["start", "summary", "end"])("keeps original history when a compaction stops after %s", async (phase) => {
     await writeReplayFixture(home);
     const original = await replay();
@@ -115,7 +157,7 @@ describe("DSH v4 transcript replay", () => {
     expect(await result()).toEqual({ frames: original });
   });
 
-  it.each(["range", "id", "source", "kind", "operation", "forward-range", "negative-range", "prune-range", "prune-target", "intervening-event"])(
+  it.each(["range", "id", "source", "kind", "operation", "forward-range", "negative-range", "forward-start", "negative-end", "prune-range", "prune-target", "intervening-event"])(
     "rejects an unrecognised compaction rewrite: %s", async (mode) => {
       await writeReplayFixture(home, undefined, undefined, (rows) => {
         appendCompactionFixture(rows);
@@ -128,6 +170,9 @@ describe("DSH v4 transcript replay", () => {
         if (mode === "operation") checkpoint.surfaceOp.op = "delete";
         if (mode === "forward-range") checkpoint.surfaceOp.endSeq = checkpoint.seq;
         if (mode === "negative-range") checkpoint.surfaceOp.startSeq = -1;
+        const summary = rows.find((row) => row.type === "compaction/summary")!;
+        if (mode === "forward-start") summary.data.shadowedRange.start = checkpoint.surfaceOp.startSeq = checkpoint.seq;
+        if (mode === "negative-end") summary.data.shadowedRange.end = checkpoint.surfaceOp.endSeq = -1;
         if (mode === "prune-range") prune.data.shadowedRange.start = 3;
         if (mode === "prune-target") prune.data.shadowedSeqs = [3];
         if (mode === "intervening-event") {

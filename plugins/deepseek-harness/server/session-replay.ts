@@ -274,7 +274,8 @@ function isCompactionReplacement(event: RecordValue, previous?: RecordValue): bo
   if (op.op !== "replace" || !Number.isSafeInteger(op.startSeq) || !Number.isSafeInteger(op.endSeq)) return false;
   const start = op.startSeq as number;
   const end = op.endSeq as number;
-  if (start < 0 || end < start || end >= (previous.seq as number)) return false;
+  // Replacement endpoints follow surface position, not numeric log order.
+  if (start < 0 || end < 0 || start >= (previous.seq as number) || end >= (previous.seq as number)) return false;
   const marker = record(previous.data);
   if (previous.type !== "compaction/prune" && previous.type !== "compaction/summary") return false;
   const range = record(marker.shadowedRange);
