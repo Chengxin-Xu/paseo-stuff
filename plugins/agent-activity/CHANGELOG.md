@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0-beta.14 — unreleased
+## 0.1.0-beta.14 — 2026-10-30
 
 - Leave messages from other agents and heartbeats native. Paseo 0.14 shows an agent message as a user-style "Sent by" row and folds the turn that follows it; beta.13 turned it into an `agent_message` card, so the turn stayed open under Collapse turns. The transformer input omits `agentMessage`, so the plugin recognises the host envelope: the name `agent_message` with a `paseo-agent-message:` call ID, or the name `heartbeat`. A provider tool that only shares the name still becomes a card.
 - **Activity: use native rows (Collapse or Summary)** now also removes the Thinking adapter. Paseo 0.14 groups Thinking with tool calls, so a plugin Thinking row split the native group into lone calls. **Activity: use tool cards (Full display)** restores both. The commands keep their IDs; only the titles and search keywords changed.

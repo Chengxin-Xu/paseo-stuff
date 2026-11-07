@@ -12,18 +12,24 @@ shared runtime or root-hoisted dependency tree.
 | Readable Agent Activity | [plugins/agent-activity](plugins/agent-activity) | Paseo 0.13 or later. Tool cards need the Full chat display; before using Collapse tool calls, Collapse turns or Summary, choose "Activity: use native rows" in each client's Command Center. |
 | DeepSeek Harness | [plugins/deepseek-harness](plugins/deepseek-harness) | Paseo 0.11 or later. Provider adapter; requires a separately installed, compatible official DSH executable and credentials. |
 
-The current support target is Paseo **0.14.0**. Activity **0.1.0-beta.14** and Math
-Renderer **0.1.0-beta.8** require Paseo **0.13.0**; their checks pass with the pinned
-0.13.2 SDK and the 0.14.0 SDK, and their host-pipeline tests run on 0.14.0 source. On
-Paseo 0.9 to 0.12, keep Activity beta.11 and Math beta.6. DeepSeek Harness
-**0.1.0-beta.18** requires Paseo **0.11.0**, is checked against the **0.11.4** SDK and
-also passes with the 0.14.0 SDK. Packed builds of all three ran on a 0.14.0 daemon in
-the 0.14.0 web client, with DeepSeek Harness on DSH **0.2.1-rc.5**. Registry installs
-of the released versions (Activity beta.13, Math beta.8, DeepSeek Harness beta.15)
-also ran on 0.14.0. All requirements are minimums. A minimum is not
-a promise about later releases; each plugin's verification record lists what was
-tested.
-Use each plugin's pinned installation command and read its verification limits.
+The current verification target is Paseo **0.15.3**. Activity **0.1.0-beta.14**
+and Math Renderer **0.1.0-beta.8** require Paseo **0.13.0**. Their checks pass with
+the pinned **0.13.2** SDK and the **0.15.3** SDK; host-pipeline tests use actual
+0.15.3 sources in every chat display mode. Both packed plugins load on an isolated
+macOS 0.15.3 daemon. The upstream reply-folding fix is merged but absent from that
+release, so the native-row/native-reply workarounds still apply.
+
+DeepSeek Harness requires Paseo **0.11.0**. **Beta.19 source is unpublished** and
+fixes history recovery after DSH records model/reasoning selections. Its checks
+pass with the pinned **0.11.4** and target **0.15.3** SDKs, and the production
+provider initializes, lists sessions/models and reopens persistence with official
+**DSH 0.2.2-rc.1** without model calls. That CLI requires **Node.js >=24.9.0**.
+The published plugin remains **beta.18**; its install tag has not changed.
+
+The latest live web-client checks remain on Paseo **0.14.0** with DSH
+**0.2.1-rc.5**. Native mobile acceptance is not complete. Requirements are minimums;
+each plugin's verification record lists the actual checks and remaining limits.
+Use its pinned installation command before changing an installed version.
 
 Read each plugin's README before installing. Plugins are trusted, unsandboxed code;
 their permissions and operational requirements differ.
@@ -42,9 +48,12 @@ paseo plugin add geoqiao/math-renderer --host <host:port>
 
 This error means the daemon's npm uses a registry mirror, such as
 `registry.npmmirror.com`. A registry record pins the `registry.npmjs.org` tarball URL.
-npm replaces that host with the mirror, and Paseo 0.12.0 to 0.14.0 reject the install
-because the URL differs, even though the package integrity is the same. This is
-reported upstream as [getpaseo/paseo#7951](https://github.com/getpaseo/paseo/issues/7951).
+npm replaces that host with the mirror. Paseo 0.12.0 through 0.15.3 still compare
+that URL as well as the package integrity, so the changed URL rejects the install.
+The [upstream report](https://github.com/getpaseo/paseo/issues/7951) is closed and
+[the fix](https://github.com/getpaseo/paseo/pull/8756) is merged on main, but the
+0.15.3 tagged installer does not contain it. Keep the workaround until a release
+contains the fix and the affected install path has been verified.
 
 Run this command as the user that runs the daemon, then install again:
 
