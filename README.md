@@ -11,8 +11,6 @@ shared runtime or root-hoisted dependency tree.
 | Math Renderer | [plugins/math-renderer](plugins/math-renderer) | Paseo 0.13 or later; block and inline LaTeX after reply completion, with formula-free blocks in the host Markdown renderer. Use native-reply mode to search formula source with chat Find or to fold formula replies under Collapse turns. Native mobile acceptance is not complete. |
 | Readable Agent Activity | [plugins/agent-activity](plugins/agent-activity) | Paseo 0.13 or later. Tool cards need the Full chat display; before using Collapse tool calls, Collapse turns or Summary, choose "Activity: use native rows" in each client's Command Center. |
 | DeepSeek Harness | [plugins/deepseek-harness](plugins/deepseek-harness) | Paseo 0.11 or later. Provider adapter; requires a separately installed, compatible official DSH executable and credentials. |
-| MaKa | [plugins/maka](plugins/maka) | **Unmaintained since 2026-09-24.** Experimental provider for the official MaKa ACP CLI, last tested with MaKa dev39; newer MaKa releases are not tracked. Its `<0.10.0` range makes Paseo 0.10 reject it. |
-| Paseo Pet | [plugins/paseo-pet](plugins/paseo-pet) | **Paused (unmaintained) since 2026-09-28.** Experimental sidebar companion for user-supplied Codex pet packs; native mobile acceptance is not complete. No character assets included. |
 
 The current support target is Paseo **0.14.0**. Activity **0.1.0-beta.14** and Math
 Renderer **0.1.0-beta.8** require Paseo **0.13.0**; their checks pass with the pinned
@@ -24,8 +22,7 @@ the 0.14.0 web client, with DeepSeek Harness on DSH **0.2.1-rc.5**. Registry ins
 of the released versions (Activity beta.13, Math beta.8, DeepSeek Harness beta.15)
 also ran on 0.14.0. All requirements are minimums. A minimum is not
 a promise about later releases; each plugin's verification record lists what was
-tested. MaKa **0.1.0-beta.4** (final, unmaintained) stays limited to Paseo 0.9.
-Pet remains on its existing 0.8 support range (0.1.1, paused; not migrated to 0.9).
+tested.
 Use each plugin's pinned installation command and read its verification limits.
 
 Read each plugin's README before installing. Plugins are trusted, unsandboxed code;
@@ -100,7 +97,9 @@ npm run prepare:wasm --if-present
 npm run check
 ```
 
-CI independently installs and checks all five plugins on Node.js 22 and 24.
+CI independently installs and checks the three plugins on Node.js 22 and 24.
+Daily triage and upstream compatibility maintenance use one Paseo schedule; see
+[maintenance](.github/maintenance/README.md).
 Use the public Paseo SDK. Typecheck before reloading the exact installed ID on an
 explicit host; do not restart the daemon or enable an intentionally disabled plugin.
 See [AGENTS.md](AGENTS.md) for repository development rules.
@@ -132,15 +131,13 @@ generated Markdown parser and embedded WASM. CI packs each npm plugin, installs 
 the production dependencies and loads the result in a Paseo daemon.
 
 Paseo's [plugin registry](https://github.com/getpaseo/plugins) (browsable at
-[paseo.sh/plugins](https://paseo.sh/plugins)) imported the four Cafe entries on
-2026-10-06. Each record pins one reviewed artifact:
+[paseo.sh/plugins](https://paseo.sh/plugins)) pins one reviewed artifact per plugin:
 
 | Registry ID | Plugin directory | Pinned artifact |
 | --- | --- | --- |
 | `geoqiao/agent-activity` | `plugins/agent-activity` | npm `paseo-readable-agent-activity`; the version follows the registry's bump PRs |
 | `geoqiao/deepseek-harness` | `plugins/deepseek-harness` | npm `paseo-deepseek-harness`; the version follows the registry's bump PRs |
 | `geoqiao/math-renderer` | `plugins/math-renderer` | npm `paseo-math-renderer`; the version follows the registry's bump PRs |
-| `geoqiao/maka` | `plugins/maka` | Git commit `abc4d96` (0.1.0-beta.4, unmaintained) |
 
 The registry opens a bump PR by itself for a new npm version. A Git record changes
 only after a new submission or a PR against that record. Readable Agent Activity
@@ -165,18 +162,16 @@ A [Paseo Cafe](https://github.com/paseo-cafe/paseo-cafe) entry can point to a su
 The entry filename must match that plugin's `paseo-plugin.json.id`. Each listing is
 submitted separately; a pull request is not a claim that Cafe has accepted the plugin.
 
-The current Cafe scope includes these four plugins, all sourced from this repository:
+The current Cafe scope includes these three plugins, all sourced from this repository:
 
 | Catalog ID | Plugin directory | Cafe PR / status |
 | --- | --- | --- |
 | `readable-agent-activity` | `plugins/agent-activity` | [Merged migration #97](https://github.com/paseo-cafe/paseo-cafe/pull/97) |
 | `deepseek-harness` | `plugins/deepseek-harness` | [Merged migration #97](https://github.com/paseo-cafe/paseo-cafe/pull/97) |
 | `math-renderer` | `plugins/math-renderer` | [Merged entry #98](https://github.com/paseo-cafe/paseo-cafe/pull/98) |
-| `maka` | `plugins/maka` | [Merged entry #120](https://github.com/paseo-cafe/paseo-cafe/pull/120) |
 
-Paseo Pet remains managed here but is not submitted to Cafe. All four entries have
-merged. The MaKa entry stays listed with an unmaintained caveat. Version/README updates appear after Cafe's next scan and deployment;
-updated curator caveats require a separate Cafe review.
+All three entries have merged. Version/README updates appear after Cafe's next
+scan and deployment; updated curator caveats require a separate Cafe review.
 
 ## Licenses and publication scope
 

@@ -3,6 +3,6 @@
   "private": true,
   "description": "Official npm dsh.cmd launcher used by the Windows integration check.",
   "dependencies": {
-    "@deepseek-ai/dsh": "0.2.1-rc.5"
+    "@deepseek-ai/dsh": "0.2.2-rc.1"
   }
 }
