@@ -16,14 +16,20 @@ patched Paseo app is required.
 > [!IMPORTANT]
 > **Requirements:** Paseo 0.11.0 or later (tested Paseo versions are listed
 > under [Paseo installation](#paseo-installation)), daemon Node.js 22.19.0 or
-> newer, and a separately installed official DeepSeek Harness executable,
+> newer, and a separately installed official DeepSeek Harness executable
+> (DSH 0.2.2-rc.1 requires Node.js 24.9.0 or newer for its CLI),
 > **DSH 0.1.5-rc.1 or newer**. Newer DSH releases are accepted without an
 > exact-version check. Tested: **0.1.5-rc.1**, **0.1.5-rc.2**, **0.1.6-alpha.2**,
 > **0.1.7-alpha.2**, **0.1.7-rc.1**, **0.1.7-rc.2**, **0.2.0-rc.1**,
-> **0.2.0-rc.2**, **0.2.1-rc.2**, **0.2.1-rc.3**, **0.2.1-rc.4** and **0.2.1-rc.5**. The executable must be able to run
+> **0.2.0-rc.2**, **0.2.1-rc.2**, **0.2.1-rc.3**, **0.2.1-rc.4**, **0.2.1-rc.5** and **0.2.2-rc.1**. The executable must be able to run
 > `dsh --profile acp --version` and `dsh --profile acp`.
 > On Paseo 0.8 to 0.10, install beta.12 instead:
 > `paseo plugin add geoqiao/paseo-stuff:plugins/deepseek-harness --ref deepseek-harness-v0.1.0-beta.12`.
+
+**Beta.19** restores displayed history after DSH context compaction and tool-output
+pruning, retaining original messages and full tool results. It also skips recorded
+model/reasoning selections, avoiding beta.18's unsupported-history warning after
+configuration changes with DSH 0.2.2-rc.1.
 
 ## What it does
 
@@ -47,11 +53,13 @@ patched Paseo app is required.
 
 Install a verified official DSH version **on the daemon machine**, then check
 that the daemon can find the executable on its PATH. The npm `latest` dist-tag
-and `next` both currently resolve to `0.2.1-rc.5`, which is tested, and the plugin is
-maintained against it:
+and `next` both currently resolve to `0.2.2-rc.1`. Its no-inference ACP and
+production-provider checks pass. Use Node.js **24.9.0 or newer** to install and
+run that CLI, including the executable selected by the daemon's `PATH` or
+provider command override:
 
 ~~~sh
-npm install -g --ignore-scripts @deepseek-ai/dsh@0.2.1-rc.5
+npm install -g --ignore-scripts @deepseek-ai/dsh@0.2.2-rc.1
 dsh --version
 ~~~
 
@@ -100,7 +108,7 @@ The verified runtime compositions use CLI `0.1.5-rc.1` or `0.1.5-rc.2` with
 `@deepseek-ai/dsh-acp` `0.1.5-rc.2`, CLI `0.1.6-alpha.2` with
 `@deepseek-ai/dsh-acp` `0.1.6-alpha.2`, the isolated published CLI/ACP
 closures `0.1.7-alpha.2`, `0.1.7-rc.1`, `0.1.7-rc.2`, `0.2.0-rc.1`,
-`0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4` and `0.2.1-rc.5`, and the global CLIs `0.2.0-rc.2` and `0.2.1-rc.3`; all use
+`0.2.1-rc.2`, `0.2.1-rc.3`, `0.2.1-rc.4`, `0.2.1-rc.5` and `0.2.2-rc.1`, and the global CLIs `0.2.0-rc.2` and `0.2.1-rc.3`; all use
 ACP SDK `1.4.0`. The plugin probes the CLI version and rejects only releases
 older than `0.1.5-rc.1` or output it cannot parse. Newer releases are accepted
 but untested until listed here; ACP behaviour follows the capabilities DSH
@@ -109,7 +117,7 @@ advertises; resuming against a peer without `session/resume` fails with a clear 
 ## ACP compatibility and limitations
 
 DSH advertises session/resume but not ACP's older top-level loadSession
-capability. Paseo's public ACP shim (through the tested 0.14.0) uses session/load when
+capability. Paseo's public ACP shim (through the tested 0.15.3) uses session/load when
 it sees persistence. A small typed stdio adapter therefore does the following:
 
 1. After initialize, if the peer has session/resume and does not have
@@ -155,12 +163,12 @@ from the launched session's `DSH_HOME` (session environment overrides launch
 environment), with the same path expansion as the Usage source. It does not
 modify the log or create a second copy of it.
 
-Replay recognises version 4 and the mapped event/content shapes only. It restores
-the original append-only conversation across context compaction: original messages
-and full tool results stay visible, while compaction summaries, correlated checkpoint
-and pruned-result replacements, and internal DeepSeek search requests are omitted.
-Only replacements matching the immediately preceding compaction marker are recognised;
-unrelated or malformed replacements still leave history unavailable. Missing,
+Replay recognises version 4 and the mapped event/content shapes only. It preserves
+the original append-only conversation across compaction and pruning, including full
+tool output. Internal summaries, correlated checkpoint/pruned-result replacements,
+model/reasoning selections and DeepSeek search requests are omitted. Replacements
+must match the immediately preceding compaction marker; endpoints follow current
+context positions and may have decreasing log sequence numbers. Missing,
 corrupt or changed files, newer generations, unknown events, unsupported content
 (such as attachments) or unrecognised surface replacements leave the timeline empty while
 DSH still restores context. Reads are capped at 16 MiB compressed, 64 MiB decoded,
@@ -172,7 +180,8 @@ not an assistant message, and includes no transcript, file paths, credentials or
 raw error text. Successful and legitimately empty replay stay silent. Opens that
 skip history, native `session/load` and failed resumes do not get this warning.
 Successful text/tool replay preserves full content within those bounds. Paseo
-0.11/0.12 may drop pre-response history; 0.14.0 is the integration test target.
+0.11/0.12 may drop pre-response history. The automated target is 0.15.3;
+real daemon history recovery was last checked on 0.14.0.
 This is a compatibility fallback for an unpublished DSH file format, to be removed
 when DSH supplies native `session/load`. See [verification](docs/verification.md)
 for the distinction between automated checks and daemon/UI testing.
@@ -185,8 +194,8 @@ have not been exercised. See [verification](https://github.com/geoqiao/paseo-stu
 
 ### Image input and ACP profiles
 
-DSH's ACP implementation supports images. DSH **0.2.1-rc.5** has a startup
-mismatch: its base profile selects `deepseek-flash` (DeepSeek-V4.1-Flash), but
+DSH's ACP implementation supports images. DSH **0.2.1-rc.5** and
+**0.2.2-rc.1** have a startup mismatch: its base profile selects `deepseek-flash` (DeepSeek-V4.1-Flash), but
 its ACP profile still selects `deepseek-v4-flash`. ACP checks image support
 at initialization, before Paseo applies a selected model. That stale default
 therefore blocks pictures even when the subsequently selected model supports them.
@@ -237,7 +246,7 @@ npm package. The `paseo-plugin.json` in the Git source retains those build steps
 To install the pinned Git prerelease instead, run:
 
 ~~~sh
-paseo plugin add git:geoqiao/paseo-stuff:plugins/deepseek-harness --ref deepseek-harness-v0.1.0-beta.18 --host <your-host>
+paseo plugin add git:geoqiao/paseo-stuff:plugins/deepseek-harness --ref deepseek-harness-v0.1.0-beta.19 --host <your-host>
 paseo plugin ls --host <your-host>
 ~~~
 
@@ -255,10 +264,16 @@ The source manifest requires `>=0.11.0`, the first release whose SDK supplies
 the resolved launch, the process helpers, provider `status()` and usage
 sources. Under Paseo's requirements contract, a minimum-only range admits
 0.11.0 and every later release, including prereleases and future breaking
-releases; it is not a promise that untested versions work. Beta.14 is tested
-with the 0.11.4 SDK and on live 0.11.4, 0.12.0-beta.2, 0.13.0 and 0.13.2 daemons
-on macOS; its checks also pass with the 0.14.0 SDK, the current support target, and
-beta.15 with the unreleased changes ran on a live 0.14.0 daemon. Do not restart the daemon for this plugin. Follow Paseo's
+releases; it is not a promise that untested versions work. Typecheck, lint and
+all 171 tests pass with the pinned 0.11.4 SDK and the no-save 0.15.3 SDK.
+The production provider factory also passes no-inference checks against official
+DSH 0.2.2-rc.1 on Node 24.18.0 with SDK 0.15.3, including persistence reopen in a
+fresh process. Real model turns ran on macOS daemons 0.11.4, 0.12.0-beta.2,
+0.13.0, 0.13.2 and 0.14.0; the newest real-turn check used DSH 0.2.1-rc.5.
+The beta.19 tarball also loads as running on an isolated 0.15.3 daemon, with
+provider diagnostic Ready and model/reasoning discovery passing without model
+calls. No 0.15.3 UI or real model turn was exercised.
+Do not restart the daemon for this plugin. Follow Paseo's
 global plugin-enable and per-installation
 enable/disable rules; an existing disabled installation should remain
 disabled unless the user explicitly enables it.

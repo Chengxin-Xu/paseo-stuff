@@ -1,13 +1,25 @@
 # Changelog
 
-## Unreleased
+## 0.1.0-beta.19 — 2026-11-07
 
-- Restore original v4 chat history after context compaction and tool-result pruning.
-  Omit only rewrites correlated with the immediately preceding compaction marker,
-  keeping original messages and full tool output without duplicate checkpoints.
-- Recognise the internal DeepSeek search-request log event without displaying its
-  request body. Unknown events, unrelated replacements, attachments and existing
-  size/time limits retain the context-only fallback.
+- Keep v4 history replay working when DSH 0.2.2-rc.1 records model/reasoning
+  changes through ACP configuration. Treat `model/selection` as bookkeeping;
+  preserve text/tool history.
+- Restore original v4 history after context compaction and tool-output pruning.
+  Omit rewrites only when correlated with the preceding marker. Support repeated
+  prefix compaction with decreasing endpoint sequence numbers, retaining complete
+  messages and tool output without duplicate summaries or checkpoints.
+- Verify official DSH 0.2.2-rc.1 with the production provider on Node 24.18.0:
+  initialization, capability mapping, catalog, session list, fresh-process
+  persistence reopen and clean close, without credentials or model calls.
+- Typecheck, lint and all 171 tests pass with the pinned Paseo 0.11.4 SDK and
+  the no-save 0.15.3 target SDK. Keep minimum SDK pins unchanged.
+- Update prerequisites for DSH's Node.js 24.9.0 minimum and document the
+  retained resume bridge, v4 replay limits and default-image startup repair.
+- Load the beta.19 tarball with runtime-only dependencies on an isolated Paseo
+  0.15.3 daemon: running plugin, Ready diagnostic and model/reasoning discovery.
+  Stop it gracefully without leftover processes. UI and real-model verification
+  remain at Paseo 0.14.0 / DSH 0.2.1-rc.5.
 
 ## 0.1.0-beta.18 — 2026-10-31
 

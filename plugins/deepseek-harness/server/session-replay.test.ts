@@ -60,6 +60,24 @@ describe("DSH v4 transcript replay", () => {
     expect(await result()).toEqual({ frames });
   });
 
+  it("keeps transcript replay when ACP records model and reasoning selections", async () => {
+    await writeReplayFixture(home);
+    const expected = await result();
+    await writeReplayFixture(home, undefined, undefined, (rows) => {
+      const selection = (reasoningEffort?: string) => ({
+        type: "model/selection", time: 0,
+        data: { provider: "deepseek-official", model: "deepseek-flash",
+          ...(reasoningEffort === undefined ? {} : { reasoningEffort }) },
+      });
+      rows.splice(1, 0, selection(), selection("off"));
+      rows.push(selection("high"));
+      rows.slice(1).forEach((row, index) => { row.seq = index; });
+    });
+    expect(await result()).toEqual(expected);
+    expect(expected.frames).toHaveLength(6);
+    expect(expected.failure).toBeUndefined();
+  });
+
   it("keeps tool failures and complete output, including its tail", async () => {
     await writeReplayFixture(home, undefined, undefined, (rows) => {
       rows[5].data.message.isError = true;

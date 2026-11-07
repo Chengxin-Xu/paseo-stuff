@@ -19,7 +19,7 @@ const BOOKKEEPING = new Set([
   "request/header", "request/context", "session/end-seed", "session/title",
   "permission/preset", "sandbox/mode", "approval/policy", "agent/inbox/spliced",
   "session-log-deepseek/delivery-accepted", "job/registered", "job/settled",
-  "goal/change", "system/message", "developer/message",
+  "goal/change", "system/message", "developer/message", "model/selection",
   "compaction/start", "compaction/summary", "compaction/end", "compaction/prune",
   "web/deepseek-search-llm-request",
 ]);

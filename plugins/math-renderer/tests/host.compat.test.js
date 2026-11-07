@@ -16,7 +16,7 @@ const input = (head = [], tail = [], display = "full") =>
   ({ head, tail, display, transform, isTurnActive: head.length > 0, expandedTurnHostIds: new Set() });
 const DISPLAYS = ["full", "collapseToolCalls", "collapseTurns"];
 
-describe("Paseo 0.14.0 whole-message presentation", () => {
+describe("Paseo 0.15.3 whole-message presentation", () => {
   it.each(DISPLAYS)("keeps streaming native and renders the whole completed reply with stable history identity (%s)", display => {
     const present = createStreamPresentation();
     const text = "Before\n\n$$x^2$$\n\nAfter";
