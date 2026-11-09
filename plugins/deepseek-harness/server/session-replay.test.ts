@@ -1,4 +1,5 @@
 import { appendFile, mkdtemp, open, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { readFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { zstdCompressSync } from "node:zlib";
@@ -14,6 +15,14 @@ afterEach(async () => { vi.restoreAllMocks(); await rm(home, { recursive: true, 
 
 const result = () => buildSessionReplay(target, { DSH_HOME: home });
 const replay = async () => (await result()).frames;
+
+// Independent published event catalog, not derived from the reader's allowlist.
+// Provenance and the upstream MIT license live beside this fixture.
+const catalog: { eventTypes: string[] } = JSON.parse(readFileSync(
+  new URL("../tests/fixtures/dsh-v4-event-types.json", import.meta.url), "utf8",
+));
+const transcriptTypes = ["assistant/message", "tool/call", "tool/result", "user/message"];
+const nonTranscriptTypes = catalog.eventTypes.filter((type) => !transcriptTypes.includes(type));
 
 describe("DSH v4 transcript replay", () => {
   it("distinguishes a legitimately empty transcript from a missing log", async () => {
@@ -76,6 +85,86 @@ describe("DSH v4 transcript replay", () => {
     expect(await result()).toEqual(expected);
     expect(expected.frames).toHaveLength(6);
     expect(expected.failure).toBeUndefined();
+  });
+
+  it("covers the published DSH 0.2.2-rc.1 catalog of 62 distinct v4 events", () => {
+    expect(new Set(catalog.eventTypes).size).toBe(62);
+    expect(catalog.eventTypes.filter((type) => transcriptTypes.includes(type)).sort()).toEqual(transcriptTypes);
+    expect(nonTranscriptTypes).toHaveLength(58);
+  });
+
+  it.each(nonTranscriptTypes)("preserves complete text/tool history around %s metadata", async (type) => {
+    await writeReplayFixture(home);
+    const expected = await result();
+    const path = await writeReplayFixture(home, undefined, undefined, (rows) => {
+      rows.splice(3, 0, { type, time: 0, data: {} });
+      rows.slice(1).forEach((row, seq) => { row.seq = seq; });
+    });
+    const before = await readFile(path);
+    expect(expected.frames).toHaveLength(6);
+    expect(await result()).toEqual(expected);
+    expect(await readFile(path)).toEqual(before);
+  });
+
+  it.each([
+    { shape: "object", data: { note: "Synthetic extension state." } },
+    { shape: "array", data: [1, "synthetic"] },
+    { shape: "null", data: null },
+    { shape: "string", data: "Synthetic extension state." },
+    { shape: "number", data: 42 },
+    { shape: "boolean", data: false },
+  ])("honours ignorable extension records with $shape data", async ({ data }) => {
+    await writeReplayFixture(home);
+    const expected = await result();
+    await writeReplayFixture(home, undefined, undefined, (rows) => {
+      rows.splice(3, 0, { type: "plugin:synthetic/metadata", time: 0, data, ignorable: true });
+      rows.slice(1).forEach((row, seq) => { row.seq = seq; });
+    });
+    expect(await result()).toEqual(expected);
+  });
+
+  it.each([undefined, false, "true", 1])("refuses unknown required events with ignorable=%s", async (ignorable) => {
+    await writeReplayFixture(home, undefined, undefined, (rows) => {
+      rows[7] = { ...rows[7], type: "future/required", ignorable };
+    });
+    expect(await result()).toEqual({ frames: [], failure: "unsupported" });
+  });
+
+  it.each([
+    { surfaceOp: "append" },
+    { surfaceOp: { op: "replace", startSeq: 0, endSeq: 1 } },
+    { sourceEventSeqs: [0] },
+  ])("refuses surface metadata on ignorable unknown records: %j", async (surface) => {
+    await writeReplayFixture(home, undefined, undefined, (rows) => {
+      rows[7] = { ...rows[7], type: "plugin:synthetic/metadata", ignorable: true, ...surface };
+    });
+    expect(await result()).toEqual({ frames: [], failure: "unsupported" });
+  });
+
+  it("keeps known transcript events even when marked ignorable", async () => {
+    await writeReplayFixture(home);
+    const expected = await result();
+    await writeReplayFixture(home, undefined, undefined, (rows) => {
+      rows.slice(1).forEach((row) => { row.ignorable = true; });
+    });
+    expect(await result()).toEqual(expected);
+  });
+
+  it.each(["missing-data", "sequence-gap", "invalid-time"])("validates ignorable record envelopes: %s", async (mode) => {
+    await writeReplayFixture(home, undefined, undefined, (rows) => {
+      rows[7] = { type: "plugin:synthetic/metadata", seq: rows[7].seq, time: 0, data: null, ignorable: true };
+      if (mode === "missing-data") delete rows[7].data;
+      if (mode === "sequence-gap") rows[7].seq = 100;
+      if (mode === "invalid-time") rows[7].time = "invalid";
+    });
+    expect(await result()).toEqual({ frames: [], failure: "corrupt" });
+  });
+
+  it("continues to reject malformed known metadata", async () => {
+    await writeReplayFixture(home, undefined, undefined, (rows) => {
+      rows[7] = { ...rows[7], type: "todo/write", data: null };
+    });
+    expect(await result()).toEqual({ frames: [], failure: "corrupt" });
   });
 
   it("keeps tool failures and complete output, including its tail", async () => {

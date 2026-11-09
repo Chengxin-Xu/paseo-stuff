@@ -166,10 +166,16 @@ modify the log or create a second copy of it.
 Replay recognises version 4 and the mapped event/content shapes only. It preserves
 the original append-only conversation across compaction and pruning, including full
 tool output. Internal summaries, correlated checkpoint/pruned-result replacements,
-model/reasoning selections and DeepSeek search requests are omitted. Replacements
+model/reasoning selections and DeepSeek search requests are omitted. Known v4
+metadata such as todo snapshots, approvals, retries, native commands, subagent
+state and file-delivery notices does not block text/tool recovery. These native
+UI cards are not rendered by this ACP replay. Unknown informational events are
+skipped only when DSH explicitly marks them `ignorable: true` and they carry no
+surface operation or source-event references; their payload may be any JSON value.
+Unknown required events still reject the replay. Replacements
 must match the immediately preceding compaction marker; endpoints follow current
 context positions and may have decreasing log sequence numbers. Missing,
-corrupt or changed files, newer generations, unknown events, unsupported content
+corrupt or changed files, newer generations, unknown required events, unsupported content
 (such as attachments) or unrecognised surface replacements leave the timeline empty while
 DSH still restores context. Reads are capped at 16 MiB compressed, 64 MiB decoded,
 50,000 records/updates and one second; exceeding a cap discards the entire replay.
@@ -181,7 +187,8 @@ raw error text. Successful and legitimately empty replay stay silent. Opens that
 skip history, native `session/load` and failed resumes do not get this warning.
 Successful text/tool replay preserves full content within those bounds. Paseo
 0.11/0.12 may drop pre-response history. The automated target is 0.15.3;
-real daemon history recovery was last checked on 0.14.0.
+text/tool history recovery was also checked on the macOS 0.15.3 desktop without
+a new model prompt. Native mobile history recovery remains untested.
 This is a compatibility fallback for an unpublished DSH file format, to be removed
 when DSH supplies native `session/load`. See [verification](docs/verification.md)
 for the distinction between automated checks and daemon/UI testing.

@@ -12,16 +12,33 @@ const MAX_RECORDS = 50_000;
 const MAX_PROJECTS = 1_024;
 const MAX_REPLAY_MS = 1_000;
 
-// Known v4 bookkeeping, not transcript messages. Unknown event kinds fail the
-// entire replay rather than displaying a possibly misleading partial history.
+// Non-transcript events from the published DSH 0.2.2-rc.1 v4 catalog. Like
+// DSH's ACP projection, this reader displays conversation and tool updates,
+// not the native UI's command, plan, file-delivery or other auxiliary cards.
+// Unknown required events still fail the entire replay.
 const BOOKKEEPING = new Set([
-  "turn/start", "turn/end", "step/start", "step/end", "assistant/attempt",
-  "request/header", "request/context", "session/end-seed", "session/title",
-  "permission/preset", "sandbox/mode", "approval/policy", "agent/inbox/spliced",
-  "session-log-deepseek/delivery-accepted", "job/registered", "job/settled",
-  "goal/change", "system/message", "developer/message", "model/selection",
-  "compaction/start", "compaction/summary", "compaction/end", "compaction/prune",
-  "web/deepseek-search-llm-request",
+  "agent-preset/selected", "agent/inbox/spliced",
+  "approval/asked", "approval/decided", "approval/policy", "assistant/attempt",
+  "command/done", "command/run",
+  "compaction/end", "compaction/prune", "compaction/start", "compaction/summary",
+  "deliverables/presented", "developer/message",
+  "feedback/message-delete", "feedback/message-put", "feedback/record",
+  "goal/change", "hook/invoked", "hook/result", "image/offload",
+  "job/registered", "job/settled", "llm/retry", "llm/retry-started",
+  "model/selection", "permission/preset", "plan/mode",
+  "request/context", "request/header", "sandbox/mode", "schedule/change",
+  "session-log-deepseek/delivery-accepted", "session/end-seed", "session/title",
+  "session/title-llm-request", "step/end", "step/start",
+  "subagent/catalog", "subagent/descriptor", "subagent/model-selection-policy",
+  "system/message", "team/member", "team/message/delivered",
+  "team/message/queued", "team/task", "todo/write",
+  "tool-workflow/agent-end", "tool-workflow/agent-start",
+  "tool-workflow/run-end", "tool-workflow/run-start",
+  "tool/ptc-dispatch", "tool/ptc-dispatch-start", "turn/end", "turn/start",
+  "web/deepseek-search-llm-request", "working-directory/change", "workspace/changes",
+]);
+const TRANSCRIPT_EVENTS = new Set([
+  "user/message", "assistant/message", "tool/call", "tool/result",
 ]);
 
 export interface ReplayTarget {
@@ -219,9 +236,21 @@ function frameLength(input: Buffer): number {
 }
 
 function replayEvent(event: RecordValue, previous?: RecordValue): RecordValue[] {
-  const data = record(event.data);
   if (typeof event.type !== "string") throw new ReplayError("corrupt");
-  if (BOOKKEEPING.has(event.type)) return [];
+  if (!("data" in event)) throw new ReplayError("corrupt");
+  if (BOOKKEEPING.has(event.type)) {
+    record(event.data);
+    return [];
+  }
+  if (!TRANSCRIPT_EVENTS.has(event.type)) {
+    // DSH's envelope permits unknown informational/plugin records to carry
+    // arbitrary JSON data. Honour only its literal opt-in, and never let an
+    // unknown record alter or cite the model-visible surface.
+    if (event.ignorable === true && event.surfaceOp === undefined
+      && event.sourceEventSeqs === undefined) return [];
+    throw new ReplayError("unsupported");
+  }
+  const data = record(event.data);
   // Display the append-only conversation, not the model's compacted surface.
   // DSH retains originals and appends a marker immediately before each prune
   // or checkpoint replacement. Do not duplicate those as fresh chat messages.

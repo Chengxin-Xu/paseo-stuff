@@ -191,7 +191,7 @@ describe.sequential("DeepSeek Harness provider", () => {
     }
   });
 
-  it.each(["success", "compacted", "empty", "oversized", "unsupported", "missing", "corrupt"] as const)(
+  it.each(["success", "compacted", "metadata", "ignorable", "empty", "oversized", "unsupported", "missing", "corrupt"] as const)(
     "reports only failed transcript recovery through the production provider: %s",
     async (mode) => {
       const connection = await connect();
@@ -204,6 +204,14 @@ describe.sequential("DeepSeek Harness provider", () => {
         if (mode !== "missing") {
           const path = await writeReplayFixture(home, "native-recovery-" + mode, cwdA, (rows) => {
             if (mode === "compacted") appendCompactionFixture(rows);
+            if (mode === "metadata") {
+              for (const type of ["todo/write", "approval/asked", "llm/retry", "subagent/descriptor", "command/done", "session/title-llm-request", "workspace/changes"]) {
+                rows.push({ type, seq: rows.length - 1, time: 0, data: {} });
+              }
+            }
+            if (mode === "ignorable") {
+              rows.push({ type: "plugin:synthetic/metadata", seq: rows.length - 1, time: 0, data: null, ignorable: true });
+            }
             if (mode === "empty") rows.splice(1);
             if (mode === "unsupported") rows[6].data.message.content = [{ type: "image", data: "private-image-api_key=secret", mimeType: "image/png" }];
           });
@@ -217,10 +225,10 @@ describe.sequential("DeepSeek Harness provider", () => {
         await connection.send(input);
         await waitForReady(collector, input.sessionId);
         const notices = collector.events.filter((event) => event.type === "session.notice");
-        if (mode === "success" || mode === "compacted" || mode === "empty") {
+        if (mode === "success" || mode === "compacted" || mode === "metadata" || mode === "ignorable" || mode === "empty") {
           expect(notices).toEqual([]);
           if (mode === "empty") expect(collector.events.filter((event) => event.type === "timeline.item")).toEqual([]);
-          if (mode === "compacted") {
+          if (mode === "compacted" || mode === "metadata" || mode === "ignorable") {
             const history = collector.events.filter((event) => event.type === "timeline.item");
             const sdk = JSON.parse(await readFile(new URL("../node_modules/@getpaseo/plugin/package.json", import.meta.url), "utf8"));
             if (Number(sdk.version.split(".")[1]) >= 13) {

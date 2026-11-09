@@ -1,5 +1,42 @@
 # Verification and limits
 
+## Unreleased — v4 event coverage (2026-11-09)
+
+- Compare the replay reader with the independently published
+  `@deepseek-ai/dsh-session@0.2.2-rc.1` v4 catalog: 62 event types, of which
+  four produce conversation/tool updates and 58 are omitted auxiliary records.
+  The catalog fixture records the exact package, file and npm integrity, with
+  the upstream MIT license alongside it. No personal transcript is a fixture.
+- Cover every non-transcript event with a synthetic regression preserving all
+  text/tool frames and the original log bytes. Additional tests cover unknown
+  `ignorable: true` records with object, array, null, string, numeric and boolean
+  payloads, required unknown records, missing/invalid envelopes, known messages
+  marked ignorable and attempted surface changes. Production-provider tests
+  require full history and no recovery notice for metadata/ignorable records.
+- `npm run check` passes on Node 24.14.0 with the pinned Paseo 0.11.4 SDK and
+  the no-save 0.15.3 SDK: typecheck, lint with no warnings/errors, and 250 tests
+  in six files for each. Package/lock SDK pins remain unchanged. Installation
+  uses the already documented `--ignore-scripts --legacy-peer-deps` flags.
+- Read-only local sampling covers 472 v4 logs and 146,064 events, including
+  historical test sessions. Before the patch, 65 logs return `unsupported`.
+  With the production patch, 470 logs replay successfully and two retain the
+  documented image-content limitation. Thirteen previously unhandled event
+  types actually occur in this sample; 20 additional catalog types have only
+  synthetic coverage. These counts are not a general failure-rate estimate.
+- The originally reported session replays to 1,956 ACP updates. After a local
+  hotfix and plugin-only reload on Paseo 0.15.3, reloading that idle agent returns
+  a 1,341-item timeline; the macOS desktop visibly displays its old messages and
+  tool history. The original persistence identity is preserved. Verification
+  sends no new model prompt, does not restart the daemon, and does not rewrite
+  existing transcript records. Native DSH resume may append its ordinary
+  initialization records. The registry installation stays on beta.19 with a
+  backed-up local runtime patch; this is not a published release.
+- Image/attachment recovery, unknown required events, malformed replacements
+  and the existing time/size limits retain their prior behavior. No fresh live
+  model-turn, compact/mobile layout or native-mobile acceptance is claimed.
+- When updating supported DSH versions, refresh the independent published
+  catalog fixture and review each new event's transcript/auxiliary role.
+
 ## Beta.19 — Paseo 0.15.3 and DSH 0.2.2-rc.1 (2026-11-07)
 
 - Beta.19 includes model-selection replay and original-history recovery after

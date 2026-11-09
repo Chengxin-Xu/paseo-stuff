@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Recognise all non-transcript event types in the published DSH 0.2.2-rc.1
+  v4 catalog. Todo snapshots, approvals, retries, title requests, subagent and
+  workspace metadata no longer discard otherwise valid text/tool history.
+- Honour unknown informational events explicitly marked `ignorable: true`,
+  including plugin records with arbitrary JSON payloads. Keep rejecting
+  unknown required events, missing envelope data and unknown surface changes.
+- Add an independently sourced 62-event catalog with provenance and license,
+  plus regressions for complete history, unchanged logs and ignorable envelopes.
+  Image/attachment replay and existing recovery bounds remain unchanged.
+
 ## 0.1.0-beta.19 — 2026-11-07
 
 - Keep v4 history replay working when DSH 0.2.2-rc.1 records model/reasoning

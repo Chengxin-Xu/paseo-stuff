@@ -54,6 +54,14 @@ and 0.14 admit updates in its load replay window. The provider regression checks
 window on 0.13.2 and 0.14.0 and explicitly records the empty-history behavior of the minimum 0.11.4
 SDK. See [verification.md](verification.md) for the executed checks and limits.
 
+The unreleased reader recognises all 62 event types from the published DSH
+0.2.2-rc.1 v4 catalog. It displays the four conversation/tool types and omits
+auxiliary metadata, matching the ACP presentation scope. Unknown events may be
+omitted only with DSH's explicit `ignorable: true` envelope and no surface
+operation or source references; their payload can be any JSON value. Unknown
+required events and unsupported image content still prevent replay. Synthetic
+catalog coverage and a macOS 0.15.3 desktop reload are recorded in verification.
+
 ## Paseo 0.15.3 and DSH 0.2.2-rc.1
 
 The 0.15.3 public SDK retains the resolved launch and ACP load-replay interfaces.
